@@ -304,7 +304,8 @@ def _should_disable_sandbox() -> bool:
         return override.strip().lower() in ("1", "true", "yes", "on")
     if not sys.platform.startswith("linux"):
         return False
-    if os.getuid() == 0:
+    getuid = getattr(os, "getuid", None)
+    if getuid is not None and getuid() == 0:
         return True
     return not _user_namespaces_available()
 
