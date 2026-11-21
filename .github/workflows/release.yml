@@ -110,7 +110,7 @@ jobs:
               echo "## Install"
               echo ""
               echo '```bash'
-              echo "pip install octop-browser==$version"
+              echo "pip install happyclaw-browser==$version"
               echo '```'
             } > .release-notes.md
           fi

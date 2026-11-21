@@ -1,4 +1,4 @@
-# Contributing to octop-browser
+# Contributing to happyclaw-browser
 
 Thank you for your interest in contributing! This guide applies to [HappyClaw](https://github.com/xkx121029/HappyClaw) and the libraries it maintains.
 
@@ -7,8 +7,8 @@ Thank you for your interest in contributing! This guide applies to [HappyClaw](h
 **Prerequisites:** Python 3.11+, Chromium (optional — integration tests skip when unavailable), [uv](https://docs.astral.sh/uv/)
 
 ```bash
-git clone https://github.com/xkx121029/octop-browser.git
-cd octop-browser
+git clone https://github.com/xkx121029/happyclaw-browser.git
+cd happyclaw-browser
 make install        # install dev dependencies
 make all            # lint + typecheck + test (CI ship bar)
 ```
@@ -23,7 +23,7 @@ make all            # lint + typecheck + test (CI ship bar)
 | `make format` | Auto-fix and format code |
 | `make typecheck` | mypy strict |
 | `make test` | pytest with coverage |
-| `make run` | Run octop-browser module |
+| `make run` | Run happyclaw-browser module |
 | `make mcp` | Start MCP server |
 | `make build` | Build wheel + sdist |
 
@@ -83,7 +83,7 @@ Configure in the GitHub repo **Settings → Branches** for both `main` and `deve
 1. Cut `release/x.y.z` from latest `develop` (version bump + CHANGELOG + README sync on that branch)
 2. Open PR: `release/x.y.z` → `main` and merge when green (**merge commit**)
 3. GitHub Action `Auto Tag On Release Merge` reads `pyproject.toml` on **main tip**, pushes `v<version>`, and dispatches `Release`
-4. `Release` builds, publishes `octop-browser` to PyPI (trusted publishing), creates the GitHub Release, then dispatches `Sync Main Into Develop`
+4. `Release` builds, publishes `happyclaw-browser` to PyPI (trusted publishing), creates the GitHub Release, then dispatches `Sync Main Into Develop`
 5. Delete `release/x.y.z`; Actions syncs `main` → `develop` (or opens `chore/sync-develop-after-*` if merge conflicts / branch protection)
 
 Agent-assisted publish: `.cursor/skills/publish` / `.codebuddy/skills/publish` (`/publish <version>`).
@@ -99,15 +99,15 @@ Branch from `main` → PR into `main` (tag via the same auto-tag path if shippin
 
 # 贡献指南
 
-感谢你对 octop-browser 的关注！本指南适用于 [HappyClaw](https://github.com/xkx121029/HappyClaw) 及其维护的各库。
+感谢你对 happyclaw-browser 的关注！本指南适用于 [HappyClaw](https://github.com/xkx121029/HappyClaw) 及其维护的各库。
 
 ## 环境搭建
 
 **前置条件：** Python 3.11+；Chromium（可选，未安装时集成测试自动跳过）、[uv](https://docs.astral.sh/uv/)
 
 ```bash
-git clone https://github.com/xkx121029/octop-browser.git
-cd octop-browser
+git clone https://github.com/xkx121029/happyclaw-browser.git
+cd happyclaw-browser
 make install
 make all            # 提交 PR 前必须通过
 ```
@@ -163,7 +163,7 @@ make all            # 提交 PR 前必须通过
 1. 从最新 `develop` 切 `release/x.y.z`（在该分支 bump 版本、CHANGELOG，并同步 README 等）
 2. PR：`release/x.y.z` → `main`，合并通过后（使用 **merge commit**）
 3. Action `Auto Tag On Release Merge` 读取 main tip 的 `pyproject.toml`，推送 `v<version>` 并触发 `Release`
-4. `Release` 构建、发布 `octop-browser` 到 PyPI、创建 GitHub Release，再触发 `Sync Main Into Develop`
+4. `Release` 构建、发布 `happyclaw-browser` 到 PyPI、创建 GitHub Release，再触发 `Sync Main Into Develop`
 5. 删除 `release/x.y.z`；Actions 自动 sync `main` → `develop`（冲突或分支保护时会开 `chore/sync-develop-after-*` PR）
 
 Agent 辅助发布：`.cursor/skills/publish` / `.codebuddy/skills/publish`（`/publish <version>`）。

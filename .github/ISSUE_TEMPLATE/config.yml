@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Security advisory
-    url: https://github.com/xkx121029/octop-browser/security/policy
+    url: https://github.com/xkx121029/happyclaw-browser/security/policy
     about: Report security vulnerabilities privately (do not open a public issue)
   - name: Contributing guide
-    url: https://github.com/xkx121029/octop-browser/blob/main/CONTRIBUTING.md
+    url: https://github.com/xkx121029/happyclaw-browser/blob/main/CONTRIBUTING.md
     about: Development setup, branching, and release workflow

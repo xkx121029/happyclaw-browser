@@ -11,7 +11,7 @@
 
 **Please do not open a public GitHub issue for security vulnerabilities.**
 
-- **GitHub Security Advisory:** [Create advisory](https://github.com/xkx121029/octop-browser/security/advisories/new)
+- **GitHub Security Advisory:** [Create advisory](https://github.com/xkx121029/happyclaw-browser/security/advisories/new)
 - **Email:** jubaoliang@gmail.com
 
 Include:
@@ -25,4 +25,4 @@ We aim to acknowledge reports within **3 business days** and provide a fix timel
 
 ## Scope
 
-This policy covers the octop-browser Python package and its official examples. Browser profiles, cookies, and credentials remain the operator's responsibility.
+This policy covers the happyclaw-browser Python package and its official examples. Browser profiles, cookies, and credentials remain the operator's responsibility.

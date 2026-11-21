@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/images/banner.jpeg" alt="Octop Browser Banner" width="600" />
+  <img src="assets/images/banner.jpeg" alt="HappyClaw Browser Banner" width="600" />
 </p>
 
 <p align="center">
@@ -8,10 +8,10 @@
 
 <p align="center">
   <a href="https://www.python.org/downloads/"><img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11%2B-blue?logo=python&logoColor=white" /></a>
-  <a href="https://github.com/xkx121029/octop-browser/blob/main/LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green" /></a>
-  <a href="https://pypi.org/project/octop-browser/"><img src="https://img.shields.io/pypi/v/octop-browser" alt="PyPI" /></a>
+  <a href="https://github.com/xkx121029/happyclaw-browser/blob/main/LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green" /></a>
+  <a href="https://pypi.org/project/happyclaw-browser/"><img src="https://img.shields.io/pypi/v/happyclaw-browser" alt="PyPI" /></a>
   <a href="https://github.com/astral-sh/ruff"><img alt="Code Style: Ruff" src="https://img.shields.io/badge/code%20style-ruff-000000?logo=ruff&logoColor=white" /></a>
-  <a href="https://github.com/xkx121029/octop-browser"><img alt="GitHub stars" src="https://img.shields.io/github/stars/xkx121029/octop-browser?style=social" /></a>
+  <a href="https://github.com/xkx121029/happyclaw-browser"><img alt="GitHub stars" src="https://img.shields.io/github/stars/xkx121029/happyclaw-browser?style=social" /></a>
 </p>
 
 <p align="center">
@@ -31,11 +31,14 @@
 
 ## 📌 Overview
 
-**Octop Browser** is a lightweight browser-use style tool that makes an agent's browser usage **more accurate and reliable**. Unlike typical stacks that route every action through Playwright, it launches a real Chromium and talks to the **Chrome DevTools Protocol (CDP) directly** — removing the intermediate layer so element targeting is driven by stable, live DOM refs and rarely misses.
+**HappyClaw Browser** is a lightweight browser-use style tool that makes an agent's browser usage **more accurate and reliable**. Unlike typical stacks that route every action through Playwright, it launches a real Chromium and talks to the **Chrome DevTools Protocol (CDP) directly** — removing the intermediate layer so element targeting is driven by stable, live DOM refs and rarely misses.
 
 Under the hood it starts a Chromium process with a `--remote-debugging-port` and speaks CDP itself. Because element references come straight from the live page, the agent acts on the *real* nodes, and those refs stay valid through reflows and re-renders — the result is higher action accuracy and lower token usage, with a persistent profile so logins don't expire mid-task.
 
-> Octop Browser's design goal: give an agent a browser it can act on with confidence — accurate clicks, low token cost, and persistent logins — through a small, well-shaped set of tools and a matching CLI.
+> HappyClaw Browser's design goal: give an agent a browser it can act on with confidence — accurate clicks, low token cost, and persistent logins — through a small, well-shaped set of tools and a matching CLI.
+
+HappyClaw Browser is an independent fork of **Octop Browser** (Copyright (c) 2026 OrcaKit, MIT) — see
+[ATTRIBUTION.md](ATTRIBUTION.md) for the upstream project and what this fork changed.
 
 *Note:* the `install-browser` command may bootstrap Playwright **once** purely to download a Chromium binary. Playwright is **not** a runtime dependency — the agent always drives the browser over CDP.
 
@@ -96,33 +99,33 @@ Under the hood it starts a Chromium process with a `--remote-debugging-port` and
 Every tool is also a CLI command:
 
 ```bash
-octop-browser install-browser     # fetch a Chromium binary (one-time)
-octop-browser navigate "https://example.com" --profile work
-octop-browser dom-tree --profile work
-octop-browser click --ref inp_1 --profile work
-octop-browser type "octop" --ref inp_1 --profile work
-octop-browser screenshot --profile work
-octop-browser close-session --kill --profile work   # also stop Chrome
+happyclaw-browser install-browser     # fetch a Chromium binary (one-time)
+happyclaw-browser navigate "https://example.com" --profile work
+happyclaw-browser dom-tree --profile work
+happyclaw-browser click --ref inp_1 --profile work
+happyclaw-browser type "HappyClaw" --ref inp_1 --profile work
+happyclaw-browser screenshot --profile work
+happyclaw-browser close-session --kill --profile work   # also stop Chrome
 # session: open / close-session / new-tab / switch-tab / close-tab / list-tabs
 ```
 
 ### Record & replay
-Octop Browser can **record** a real browsing session and **replay** it:
+HappyClaw Browser can **record** a real browsing session and **replay** it:
 
-1. `octop-browser record daemon-start` — launch the long-lived recording daemon.
-2. `octop-browser record start` — begin capturing the active tab.
+1. `happyclaw-browser record daemon-start` — launch the long-lived recording daemon.
+2. `happyclaw-browser record start` — begin capturing the active tab.
 3. Browse normally. A small injected script captures clicks, typed text, navigations, and submits, with privacy redaction of sensitive fields.
-4. `octop-browser record stop` — stop capturing.
-5. `octop-browser record generate-steps <id>` — inspect the semantic steps; `record generate-skill <id>` emits a draft **Skill** (`draft.skill.md`).
-6. `octop-browser replay run <id>` — re-execute as **skill-guided agentic** execution (the model replays intent, not brittle coordinates/refs).
+4. `happyclaw-browser record stop` — stop capturing.
+5. `happyclaw-browser record generate-steps <id>` — inspect the semantic steps; `record generate-skill <id>` emits a draft **Skill** (`draft.skill.md`).
+6. `happyclaw-browser replay run <id>` — re-execute as **skill-guided agentic** execution (the model replays intent, not brittle coordinates/refs).
 
 Use `record list` / `record show <id>` / `record status` / `record doctor` to manage recordings.
 
 ### MCP server
-`octop-browser` ships an MCP server, so any MCP-capable agent can drive the browser through the same tool set.
+`happyclaw-browser` ships an MCP server, so any MCP-capable agent can drive the browser through the same tool set.
 
 ```bash
-python -m octop_browser.mcp_server   # or: make mcp
+python -m happyclaw_browser.mcp_server   # or: make mcp
 ```
 
 It speaks MCP over stdio, which is the transport most agent clients expect.
@@ -134,8 +137,8 @@ Python API, so `browser_close_session` also takes `kill` to terminate Chrome.
 
 ### Agent skills
 The `skills/` directory ships ready-made Skill files for agents that support
-skill loading — `skills/octop-browser/SKILL.md` (English) and
-`skills/octop-browser-zh/SKILL.md` (Chinese). They encode the safe usage
+skill loading — `skills/happyclaw-browser/SKILL.md` (English) and
+`skills/happyclaw-browser-zh/SKILL.md` (Chinese). They encode the safe usage
 pattern: run `dom-tree` before every `click`, pass `ref`s instead of
 coordinates, and reuse named profiles for login state. `record generate-skill`
 emits a draft Skill in the same format.
@@ -144,20 +147,20 @@ emits a draft Skill in the same format.
 
 ### Prerequisites
 - **Python 3.11+** — verified on 3.11 and 3.12. Higher-level applications built
-  on top of it (e.g. Octop) may require a newer Python; follow their own docs.
+  on top of it (e.g. HappyClaw) may require a newer Python; follow their own docs.
 - A Chromium / Chrome binary (auto-downloaded by `install-browser`)
 
 ### 1. Install
 
 ```bash
-pip install octop-browser
-octop-browser install-browser    # fetch a Chromium binary once
+pip install happyclaw-browser
+happyclaw-browser install-browser    # fetch a Chromium binary once
 ```
 
 ### 2. Use as a library
 
 ```python
-from octop_browser import BrowserSession
+from happyclaw_browser import BrowserSession
 
 async with await BrowserSession.create(profile="default") as session:
     await session.navigate("https://example.com")
@@ -168,7 +171,7 @@ async with await BrowserSession.create(profile="default") as session:
 Or statelessly:
 
 ```python
-from octop_browser import browser_tool
+from happyclaw_browser import browser_tool
 
 await browser_tool(action="navigate", url="https://example.com", profile="work")
 ```
@@ -176,26 +179,26 @@ await browser_tool(action="navigate", url="https://example.com", profile="work")
 ### 3. Use as a CLI
 
 ```bash
-octop-browser --help
-octop-browser --version
-octop-browser navigate "https://example.com" --profile work
-octop-browser dom-tree --profile work
-octop-browser dom-tree --help
+happyclaw-browser --help
+happyclaw-browser --version
+happyclaw-browser navigate "https://example.com" --profile work
+happyclaw-browser dom-tree --profile work
+happyclaw-browser dom-tree --help
 ```
 
 The top-level help lists every command and common examples. Every command also
 has its own help page, including nested commands such as
-`octop-browser record start --help`.
+`happyclaw-browser record start --help`.
 
 ### 4. Record a workflow
 
 ```bash
-octop-browser record daemon-start
-octop-browser record start
+happyclaw-browser record daemon-start
+happyclaw-browser record start
 # ... interact with the page ...
-octop-browser record stop
-octop-browser record generate-skill <recording_id>   # emit a draft Skill
-octop-browser replay run <recording_id>              # replay it
+happyclaw-browser record stop
+happyclaw-browser record generate-skill <recording_id>   # emit a draft Skill
+happyclaw-browser replay run <recording_id>              # replay it
 ```
 
 ## 📑 Contents
@@ -213,12 +216,13 @@ octop-browser replay run <recording_id>              # replay it
 - **Project Info**
   - [Contributing](#-contributing)
   - [Related projects](#-related-projects)
+  - [Attribution](#-attribution)
   - [License](#-license)
 
 ## 📖 CLI reference
 
-Use `octop-browser --help` for the complete command list and
-`octop-browser <command> --help` for command-specific options. The
+Use `happyclaw-browser --help` for the complete command list and
+`happyclaw-browser <command> --help` for command-specific options. The
 `--version` flag prints the installed package version.
 
 | Command | Description |
@@ -249,7 +253,7 @@ captured a login can still be replayed safely — keep the secret in the environ
 pass it in at replay time:
 
 ```bash
-octop-browser replay run <recording_id> --input sensitive_value="$MY_PASSWORD"
+happyclaw-browser replay run <recording_id> --input sensitive_value="$MY_PASSWORD"
 ```
 
 ### DOM levels
@@ -264,15 +268,15 @@ octop-browser replay run <recording_id> --input sensitive_value="$MY_PASSWORD"
 | `structured` | varies | JSON, for programmatic use |
 
 ```bash
-octop-browser dom-tree --level minimal      # cheap page check
-octop-browser dom-tree --level structured   # JSON for scripts
+happyclaw-browser dom-tree --level minimal      # cheap page check
+happyclaw-browser dom-tree --level structured   # JSON for scripts
 ```
 
 ## 🐍 Python API
 
 ### Exports
 
-Everything below is importable from the package root: `from octop_browser import ...`
+Everything below is importable from the package root: `from happyclaw_browser import ...`
 
 | Symbol | Kind | Purpose |
 |--------|------|---------|
@@ -281,7 +285,7 @@ Everything below is importable from the package root: `from octop_browser import
 | `ToolResult` | model | Return value of every session method and `browser_tool()` |
 | `ActionMetrics` | model | Per-action timing / token counters |
 | `TabInfo` | model | One tab: `tab_id` · `url` · `title` · `active` |
-| `OctopSettings` | model | Full settings object — pass via `BrowserSession.create(settings=...)` |
+| `HappyclawSettings` | model | Full settings object — pass via `BrowserSession.create(settings=...)` |
 | `settings` | instance | Process-wide default, built from the environment at import time |
 | `BrowserMode` | type | `Literal["auto", "headed", "headless"]` |
 | `chromium_executable` | fn | Path of the managed Chromium binary, or `None` if absent |
@@ -332,12 +336,12 @@ breaking the action.
 ## ⚙️ Configuration
 
 Every setting is read from the environment at import time. You can also build a
-`OctopSettings` object explicitly and hand it to `BrowserSession.create()`:
+`HappyclawSettings` object explicitly and hand it to `BrowserSession.create()`:
 
 ```python
-from octop_browser import BrowserSession, OctopSettings
+from happyclaw_browser import BrowserSession, HappyclawSettings
 
-settings = OctopSettings(cdp_port_start=9300, cdp_timeout=60.0)
+settings = HappyclawSettings(cdp_port_start=9300, cdp_timeout=60.0)
 session = await BrowserSession.create(profile="work", settings=settings)
 ```
 
@@ -388,6 +392,12 @@ every version live in [CHANGELOG.md](CHANGELOG.md).
 | Project | Description |
 |---------|-------------|
 | [HappyClaw](https://github.com/xkx121029/HappyClaw) | The self-hosted assistant that ships this library |
+
+## 🏷️ Attribution
+
+This project is based on Octop (`TencentCloud/octop-browser`), Copyright (c) 2026
+OrcaKit, licensed under the MIT License. HappyClaw maintains an independent fork
+— see [ATTRIBUTION.md](ATTRIBUTION.md) for details.
 
 ## 📄 License
 

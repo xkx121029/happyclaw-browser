@@ -1,7 +1,7 @@
 ---
 name: publish
 description: >-
-  Publish the octop-browser Python package: cut a release branch from develop, bump
+  Publish the happyclaw-browser Python package: cut a release branch from develop, bump
   version, update CHANGELOG / README, open a PR to main; after merge, Actions
   tag on main (PyPI + GitHub Release) and sync main into develop. Use when the
   user asks to publish, release, bump version, cut a release, or run /publish.
@@ -10,7 +10,7 @@ disable-model-invocation: true
 
 # Publish
 
-自动化 octop-browser（PyPI: `octop-browser`）的完整发布流程。
+自动化 happyclaw-browser（PyPI: `happyclaw-browser`）的完整发布流程。
 
 **开始时宣告：** "正在使用 publish 技能发布版本 {VERSION}。"
 
@@ -31,7 +31,7 @@ disable-model-invocation: true
 | `INTEGRATION_BRANCH` | `develop` | 日常集成分支；release 必须从最新 tip 切出 |
 | `TARGET_BRANCH` | `main` | 合并请求的目标分支（生产真源） |
 | `RELEASE_BRANCH_PREFIX` | `release/` | release 分支名前缀 |
-| `PYPI_PACKAGE` | `octop-browser` | PyPI 包名（仅用于提示文案） |
+| `PYPI_PACKAGE` | `happyclaw-browser` | PyPI 包名（仅用于提示文案） |
 
 ## 调用方式
 
@@ -77,7 +77,7 @@ Release 分支:                       release/A.B.C
 集成起点:                           develop
 合入目标:                           main
 Tag 时机:                           main 合并之后（不会在 release 上先打 tag）
-PyPI 包:                            octop-browser
+PyPI 包:                            happyclaw-browser
 
 确认发布 X.Y.Z → A.B.C？[y/N]
 ```
@@ -191,7 +191,7 @@ git checkout -B {RELEASE_BRANCH_PREFIX}{version} {REMOTE}/{INTEGRATION_BRANCH}
    ```
 2. `README_FILE` / `README_CN_FILE`（若存在）：
    - 若存在静态 shields 徽标 `version-X.Y.Z-orange`（或同类），升级为 `version-A.B.C-orange`。
-   - 若仅使用动态 `shields.io/pypi/v/octop-browser` 徽标，**无需改徽标**（PyPI 发布后自动更新），但仍须检查 README 中是否有硬编码安装示例版本（如 `pip install octop-browser==X.Y.Z`）并同步。
+   - 若仅使用动态 `shields.io/pypi/v/happyclaw-browser` 徽标，**无需改徽标**（PyPI 发布后自动更新），但仍须检查 README 中是否有硬编码安装示例版本（如 `pip install happyclaw-browser==X.Y.Z`）并同步。
    - 用户可见的发版说明若写在 README，按需补一行指向 `CHANGELOG.md` 对应版本。
    - 文件不存在则跳过并提示（不中止）。
 3. `INIT_VERSION_FILE` — 仅当文件内存在硬编码 `__version__ = "..."` 时升级；若通过 `importlib.metadata` / `_version.py` 读包元数据则跳过。
@@ -222,7 +222,7 @@ git push -u {REMOTE} {RELEASE_BRANCH_PREFIX}{version}
 
 ```bash
 gh pr create \
-  --repo xkx121029/octop-browser \
+  --repo xkx121029/happyclaw-browser \
   --base {TARGET_BRANCH} \
   --head {RELEASE_BRANCH_PREFIX}{version} \
   --title "chore: release {version}" \
@@ -233,7 +233,7 @@ gh pr create \
 - [ ] CI green
 - [ ] Merge this PR into main with a **merge commit** (not squash)
 - [ ] After merge, GitHub Action auto-pushes v{version} tag on main tip
-- [ ] Release workflow publishes octop-browser to PyPI and syncs main → develop
+- [ ] Release workflow publishes happyclaw-browser to PyPI and syncs main → develop
 EOF
 )"
 ```

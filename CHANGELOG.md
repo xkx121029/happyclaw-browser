@@ -1,6 +1,6 @@
 # Changelog
 
-本文件记录 `octop-browser` 的版本变更。
+本文件记录 `happyclaw-browser`（原 `octop-browser`）的版本变更。
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
@@ -11,6 +11,47 @@
 
 - 对齐 HappyClaw 主仓的分支策略：引入 `develop` 集成分支策略；禁止直推 `main`/`develop`；发版后由 `sync-main-to-develop.yml` 同步；新增 `/publish` skill（发版同步 CHANGELOG / README）。
 - 改进 CLI 帮助信息：新增 `--version`、顶层使用示例和子命令帮助提示，并明确 `install-browser` 中 Playwright 仅用于 Chromium 下载引导。
+
+
+## [1.0.2] - 2026-11-21
+
+本版把命名从 Octop 全量切换到 HappyClaw。**这是一个 breaking release**：
+分发名与导入名都变了，升级需要改 `pip install` 目标与所有 `import` 行。
+对 Octop 上游的署名见 [ATTRIBUTION.md](ATTRIBUTION.md)。
+
+### 破坏性变更
+
+- **分发名** `octop-browser` → **`happyclaw-browser`**。
+  升级：`pip uninstall octop-browser && pip install happyclaw-browser`。
+- **导入包** `octop_browser` → **`happyclaw_browser`**。
+  所有 `import octop_browser` / `from octop_browser import ...` 需改为新名，
+  例如 `from happyclaw_browser import BrowserSession`。
+- **CLI 入口** 由 `octop-browser` 改为 `happyclaw-browser`（子命令与参数不变）。
+- **配置类** `OctopSettings` → `HappyclawSettings`（字段与构造参数不变），
+  同时是 `__all__` 里的导出名变更。
+- **MCP 服务标识** 由 `octop-browser` 改为 `happyclaw-browser`，MCP 客户端
+  按其名称区分服务端时需同步更新配置。
+- **logger 名** 随包名变为 `happyclaw_browser.*`；按旧名配置 `logging` 的地方需更新。
+
+### 兼容性
+
+- **环境变量**：`OCTOP_SKIP_PLAYWRIGHT_PIP` → `HAPPYCLAW_SKIP_PLAYWRIGHT_PIP`，
+  `OCTOP_MULTI_PIP_BOOTSTRAP` → `HAPPYCLAW_MULTI_PIP_BOOTSTRAP`。
+  新名优先；只设旧名时仍然生效，但会抛一次 `DeprecationWarning`，后续版本移除。
+  更早的 `HARNESS_*` 同名前缀同样按此规则兜底。
+- **数据目录不变**：配置目录仍是 `~/.octop-browser/`（profiles、screenshots、
+  状态文件 `.octop-browser-*.json` / `.octop-browser-chrome.pid` 均保持原名），
+  已登录的 profile 与历史录制无需迁移。
+- **`BROWSER_USE_*` 环境变量不变**，取值语义与默认值全部保持。
+
+### 其他
+
+- 新增 [ATTRIBUTION.md](ATTRIBUTION.md)（中英双语），明确本项目基于
+  Octop Browser（`TencentCloud/octop-browser`，版权方 OrcaKit，MIT），并说明
+  HappyClaw 维护独立分支。
+- `LICENSE` 在保留原始版权行的同时追加 `Copyright (c) 2026 xkx121029`。
+- README / README_CN 全量切换新名；截图产物文件名前缀由 `octop-` 改为
+  `happyclaw-`，Chrome stderr 临时文件前缀与 Chrome 临时 user-data-dir 前缀同步改名。
 
 
 ## [1.0.1] - 2026-11-21
@@ -130,6 +171,7 @@
 - `install-browser` 自动下载并校验受管 Chromium，无需预装浏览器。
 - 提供流式安装事件，便于外部展示进度。
 
-[Unreleased]: https://github.com/xkx121029/octop-browser/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/xkx121029/happyclaw-browser/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/xkx121029/happyclaw-browser/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/xkx121029/octop-browser/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/xkx121029/octop-browser/releases/tag/v1.0.0

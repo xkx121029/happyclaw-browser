@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest an idea for octop-browser
+about: Suggest an idea for happyclaw-browser
 title: "[feat] "
 labels: enhancement
 ---

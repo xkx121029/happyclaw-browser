@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Report a defect or unexpected behavior in octop-browser
+about: Report a defect or unexpected behavior in happyclaw-browser
 title: "[bug] "
 labels: bug
 ---
@@ -21,7 +21,7 @@ labels: bug
 
 ## Environment
 
-- `octop-browser` version:
+- `happyclaw-browser` version:
 - Python version:
 - OS:
 - Chromium / Chrome version (if relevant):

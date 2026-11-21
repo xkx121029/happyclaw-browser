@@ -11,9 +11,9 @@ make all       # ship bar: format + lint + typecheck + test — what pre-commit 
 make format    # ruff check --fix + ruff format on src/ tests/ (rewrites files)
 make lint      # ruff check + ruff format --check on src/ tests/
 make typecheck # mypy strict on src/
-make test      # full suite with coverage (uv run pytest --cov=octop_browser)
+make test      # full suite with coverage (uv run pytest --cov=happyclaw_browser)
 make build     # uv build → wheel + sdist
-make mcp       # launch the MCP stdio server (python -m octop_browser.mcp_server)
+make mcp       # launch the MCP stdio server (python -m happyclaw_browser.mcp_server)
 make publish   # local uv publish (prefer /publish skill + Actions; do not use for public releases)
 make clean     # remove dist/, .coverage, .mypy_cache/, .ruff_cache/
 ```
@@ -34,8 +34,8 @@ uv run pytest tests/unit/test_settings.py::test_env_override_browser_mode -q
 uv run pytest tests/integration/ -v
 
 # Type-check or lint just one path
-uv run mypy src/octop_browser/session.py
-uv run ruff check src/octop_browser/cdp/
+uv run mypy src/happyclaw_browser/session.py
+uv run ruff check src/happyclaw_browser/cdp/
 
 # Install dev extras + enable the commit gate
 uv sync --extra dev
@@ -62,9 +62,9 @@ mcp_server.py   ──┘                          │
 - `cdp.client.CDPClient` — minimal CDP framing over `websockets.asyncio.client`. `send(method, params)` returns the result; `enable_domain()` enables `Page` / `DOM` / `Runtime` / `Input` after connect.
 - `cdp.launcher` — `find_chrome()`, `launch_or_attach()` (re-attach if port is already serving CDP), `_get_ws_url()` polls `http://{cdp_host}:{port}/json/version`, `get_page_ws_url()` picks the first `type==page` target. All HTTP probes go through `aiohttp` and **always read `cdp_host` from settings** — never hardcode `localhost`.
 
-### Configuration: OctopSettings (single source of truth)
+### Configuration: HappyclawSettings (single source of truth)
 
-`settings.OctopSettings` is a `dataclass` whose every field uses `field(default_factory=lambda: _env_*(...))`. This means **each instantiation re-reads env vars**, which is what `monkeypatch.setenv` in tests relies on. The module-level `settings` singleton (read at import time) is the default everywhere; tests should construct a fresh `OctopSettings()` rather than mutating it.
+`settings.HappyclawSettings` is a `dataclass` whose every field uses `field(default_factory=lambda: _env_*(...))`. This means **each instantiation re-reads env vars**, which is what `monkeypatch.setenv` in tests relies on. The module-level `settings` singleton (read at import time) is the default everywhere; tests should construct a fresh `HappyclawSettings()` rather than mutating it.
 
 Env vars (all optional):
 
@@ -82,13 +82,13 @@ Env vars (all optional):
 
 The MCP server has no per-tool `inputSchema` field for these — they are passed via the standard `mcpServers.<name>.env` block in client config. Do not add them to the tool schema.
 
-### Browser mode resolution (octop_browser/mode.py)
+### Browser mode resolution (happyclaw_browser/mode.py)
 
 Three modes — `auto` / `headed` / `headless`. Resolution priority in `BrowserSession.create()`:
 
 1. Explicit `headless=True/False` argument (legacy escape hatch, wins outright)
 2. Explicit `mode=` argument
-3. `cfg.browser_mode` (from `OctopSettings`, which reads `BROWSER_USE_MODE`)
+3. `cfg.browser_mode` (from `HappyclawSettings`, which reads `BROWSER_USE_MODE`)
 
 `auto` calls `has_desktop_environment()`: True on macOS/Windows always; on Linux requires `$DISPLAY` or `$WAYLAND_DISPLAY`. The result is fed to `resolve_headless()`. `_build_flags` only appends `--headless=new` when the resolved bool is True.
 
@@ -115,7 +115,7 @@ _fire("before_action", {...}) → action body → _record(result)
 
 ### Skill files (Claude Code / agent-facing)
 
-Live at `skills/octop-browser/SKILL.md` (English) and `skills/octop-browser-zh/SKILL.md` (Chinese). They use the standard YAML-frontmatter format (`name`, `description`, `allowed-tools`) and are designed to be `cp -r`'d into other agent projects. Keep these in sync when the public surface (env vars, modes, action list) changes.
+Live at `skills/happyclaw-browser/SKILL.md` (English) and `skills/happyclaw-browser-zh/SKILL.md` (Chinese). They use the standard YAML-frontmatter format (`name`, `description`, `allowed-tools`) and are designed to be `cp -r`'d into other agent projects. Keep these in sync when the public surface (env vars, modes, action list) changes.
 
 ## Project conventions
 
@@ -125,11 +125,11 @@ Live at `skills/octop-browser/SKILL.md` (English) and `skills/octop-browser-zh/S
 - **mypy**: `strict = true`, `python_version = "3.11"`. New code must type-check under strict mode; reach for `from __future__ import annotations` (already used everywhere) before adding `# type: ignore`.
 - **No Playwright, no Selenium**: the dependency story is just `websockets`, `aiohttp`, `pydantic`, `mcp`. Don't add browser drivers.
 - **`localhost` is never hardcoded** — always go through `cfg.cdp_host`. A dedicated regression hazard if you forget.
-- **Repository URL** in docs is `https://github.com/xkx121029/octop-browser.git`.
+- **Repository URL** in docs is `https://github.com/xkx121029/happyclaw-browser.git`.
 
 ## Branching & release
 
-Follow Octop-style flow documented in `CONTRIBUTING.md`:
+Follow HappyClaw-style flow documented in `CONTRIBUTING.md`:
 
 ```
 feature/* ──PR──► develop ──► release/x.y.z ──PR──► main ──tag v*──► publish

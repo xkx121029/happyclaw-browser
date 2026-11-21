@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/images/banner.jpeg" alt="Octop Browser Banner" width="600" />
+  <img src="assets/images/banner.jpeg" alt="HappyClaw Browser Banner" width="600" />
 </p>
 
 <p align="center">
@@ -8,10 +8,10 @@
 
 <p align="center">
   <a href="https://www.python.org/downloads/"><img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11%2B-blue?logo=python&logoColor=white" /></a>
-  <a href="https://github.com/xkx121029/octop-browser/blob/main/LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green" /></a>
-  <a href="https://pypi.org/project/octop-browser/"><img src="https://img.shields.io/pypi/v/octop-browser" alt="PyPI" /></a>
+  <a href="https://github.com/xkx121029/happyclaw-browser/blob/main/LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green" /></a>
+  <a href="https://pypi.org/project/happyclaw-browser/"><img src="https://img.shields.io/pypi/v/happyclaw-browser" alt="PyPI" /></a>
   <a href="https://github.com/astral-sh/ruff"><img alt="Code Style: Ruff" src="https://img.shields.io/badge/code%20style-ruff-000000?logo=ruff&logoColor=white" /></a>
-  <a href="https://github.com/xkx121029/octop-browser"><img alt="GitHub stars" src="https://img.shields.io/github/stars/xkx121029/octop-browser?style=social" /></a>
+  <a href="https://github.com/xkx121029/happyclaw-browser"><img alt="GitHub stars" src="https://img.shields.io/github/stars/xkx121029/happyclaw-browser?style=social" /></a>
 </p>
 
 <p align="center">
@@ -31,11 +31,14 @@
 
 ## 📌 概述
 
-**Octop Browser** 是一个轻量的 browser-use 场景工具，目标是让 Agent 使用浏览器**更准确、更可靠**。与典型方案在 Playwright 之上再包一层不同，它直接启动一个真实的 Chromium，并通过 **Chrome DevTools Protocol（CDP）直连**——去掉中间层之后，元素定位基于实时 DOM 的稳定 ref，提升准确度。
+**HappyClaw Browser** 是一个轻量的 browser-use 场景工具，目标是让 Agent 使用浏览器**更准确、更可靠**。与典型方案在 Playwright 之上再包一层不同，它直接启动一个真实的 Chromium，并通过 **Chrome DevTools Protocol（CDP）直连**——去掉中间层之后，元素定位基于实时 DOM 的稳定 ref，提升准确度。
 
 在实现上，它启动一个带 `--remote-debugging-port` 的 Chromium 进程，并自行与 CDP 通信。由于元素 ref 直接来自实时页面，Agent 操作的是*真实*节点，且这些 ref 在回流与重渲染后依然有效——因此动作准确度更高、token 占用更低；配合持久化 profile，登录态也不会在任务中途失效。
 
-> Octop Browser 的设计目标：给 Agent 一个可以放心操作的浏览器——点击准确、token 占用低、登录态可保持——以一组小而规整的工具，外加一个对等的 CLI。
+> HappyClaw Browser 的设计目标：给 Agent 一个可以放心操作的浏览器——点击准确、token 占用低、登录态可保持——以一组小而规整的工具，外加一个对等的 CLI。
+
+HappyClaw Browser 是 **Octop Browser**（版权 (c) 2026 OrcaKit，MIT 许可）的独立分支——
+上游项目与本次改动见 [ATTRIBUTION.md](ATTRIBUTION.md)。
 
 *说明：* `install-browser` 命令为了下载 Chromium 二进制，**可能**一次性引导 Playwright 来取浏览器；但 Playwright **不是**运行时依赖——Agent 始终通过 CDP 驱动浏览器。
 
@@ -96,33 +99,33 @@
 每个工具同时是一条 CLI 命令：
 
 ```bash
-octop-browser install-browser     # 下载 Chromium 二进制（一次性）
-octop-browser navigate "https://example.com" --profile work
-octop-browser dom-tree --profile work
-octop-browser click --ref inp_1 --profile work
-octop-browser type "octop" --ref inp_1 --profile work
-octop-browser screenshot --profile work
-octop-browser close-session --kill --profile work   # 同时结束 Chrome 进程
+happyclaw-browser install-browser     # 下载 Chromium 二进制（一次性）
+happyclaw-browser navigate "https://example.com" --profile work
+happyclaw-browser dom-tree --profile work
+happyclaw-browser click --ref inp_1 --profile work
+happyclaw-browser type "HappyClaw" --ref inp_1 --profile work
+happyclaw-browser screenshot --profile work
+happyclaw-browser close-session --kill --profile work   # 同时结束 Chrome 进程
 # 会话：open / close-session / new-tab / switch-tab / close-tab / list-tabs
 ```
 
 ### 录制与回放
-Octop Browser 可以**录制**真实浏览过程并**回放**：
+HappyClaw Browser 可以**录制**真实浏览过程并**回放**：
 
-1. `octop-browser record daemon-start` —— 启动常驻录制守护进程。
-2. `octop-browser record start` —— 开始录制当前标签页。
+1. `happyclaw-browser record daemon-start` —— 启动常驻录制守护进程。
+2. `happyclaw-browser record start` —— 开始录制当前标签页。
 3. 正常浏览。一小段注入脚本会捕获点击、输入、跳转与提交，并对敏感字段做脱敏。
-4. `octop-browser record stop` —— 停止录制。
-5. `octop-browser record generate-steps <id>` —— 查看语义化步骤；`record generate-skill <id>` 生成一份草稿版 **Skill**（`draft.skill.md`）。
-6. `octop-browser replay run <id>` —— 以**技能引导的智能体执行**方式回放（模型复现意图，而非脆弱的坐标/ref）。
+4. `happyclaw-browser record stop` —— 停止录制。
+5. `happyclaw-browser record generate-steps <id>` —— 查看语义化步骤；`record generate-skill <id>` 生成一份草稿版 **Skill**（`draft.skill.md`）。
+6. `happyclaw-browser replay run <id>` —— 以**技能引导的智能体执行**方式回放（模型复现意图，而非脆弱的坐标/ref）。
 
 可用 `record list` / `record show <id>` / `record status` / `record doctor` 管理录制内容。
 
 ### MCP 服务
-`octop-browser` 自带一个 MCP 服务，任意支持 MCP 的 Agent 都能通过同一套工具驱动浏览器。
+`happyclaw-browser` 自带一个 MCP 服务，任意支持 MCP 的 Agent 都能通过同一套工具驱动浏览器。
 
 ```bash
-python -m octop_browser.mcp_server   # 或：make mcp
+python -m happyclaw_browser.mcp_server   # 或：make mcp
 ```
 
 它通过 stdio 提供 MCP 协议，这也是多数 Agent 客户端默认使用的传输方式。
@@ -134,28 +137,28 @@ python -m octop_browser.mcp_server   # 或：make mcp
 
 ### Agent 技能
 `skills/` 目录提供了开箱可用的 Skill 文件，供支持技能加载的 Agent 直接使用——
-`skills/octop-browser/SKILL.md`（英文）与 `skills/octop-browser-zh/SKILL.md`（中文）。
+`skills/happyclaw-browser/SKILL.md`（英文）与 `skills/happyclaw-browser-zh/SKILL.md`（中文）。
 它们固化了安全用法：每次 `click` 之前先跑 `dom-tree`、传 `ref` 而不是坐标、
 用命名 profile 复用登录态。`record generate-skill` 生成的草稿 Skill 也是同一格式。
 
 ## 🚀 快速开始
 
 ### 环境要求
-- **Python 3.11+** —— 已在 3.11 / 3.12 验证。基于它构建的上层应用（如 Octop）
+- **Python 3.11+** —— 已在 3.11 / 3.12 验证。基于它构建的上层应用（如 HappyClaw）
   可能要求更高版本，以其自身文档为准。
 - 一个 Chromium / Chrome 二进制（由 `install-browser` 自动下载）
 
 ### 1. 安装
 
 ```bash
-pip install octop-browser
-octop-browser install-browser    # 一次性下载 Chromium 二进制
+pip install happyclaw-browser
+happyclaw-browser install-browser    # 一次性下载 Chromium 二进制
 ```
 
 ### 2. 作为库使用
 
 ```python
-from octop_browser import BrowserSession
+from happyclaw_browser import BrowserSession
 
 async with await BrowserSession.create(profile="default") as session:
     await session.navigate("https://example.com")
@@ -166,7 +169,7 @@ async with await BrowserSession.create(profile="default") as session:
 或以无状态方式：
 
 ```python
-from octop_browser import browser_tool
+from happyclaw_browser import browser_tool
 
 await browser_tool(action="navigate", url="https://example.com", profile="work")
 ```
@@ -174,25 +177,25 @@ await browser_tool(action="navigate", url="https://example.com", profile="work")
 ### 3. 作为 CLI 使用
 
 ```bash
-octop-browser --help
-octop-browser --version
-octop-browser navigate "https://example.com" --profile work
-octop-browser dom-tree --profile work
-octop-browser dom-tree --help
+happyclaw-browser --help
+happyclaw-browser --version
+happyclaw-browser navigate "https://example.com" --profile work
+happyclaw-browser dom-tree --profile work
+happyclaw-browser dom-tree --help
 ```
 
 顶层帮助会列出所有命令和常用示例。每个命令也有独立帮助页，包含录制等
-嵌套命令，例如 `octop-browser record start --help`。
+嵌套命令，例如 `happyclaw-browser record start --help`。
 
 ### 4. 录制一段流程
 
 ```bash
-octop-browser record daemon-start
-octop-browser record start
+happyclaw-browser record daemon-start
+happyclaw-browser record start
 # ... 在页面上操作 ...
-octop-browser record stop
-octop-browser record generate-skill <recording_id>   # 生成一份草稿版 Skill
-octop-browser replay run <recording_id>              # 回放
+happyclaw-browser record stop
+happyclaw-browser record generate-skill <recording_id>   # 生成一份草稿版 Skill
+happyclaw-browser replay run <recording_id>              # 回放
 ```
 
 ## 📑 目录
@@ -210,12 +213,13 @@ octop-browser replay run <recording_id>              # 回放
 - **项目信息**
   - [贡献](#-贡献)
   - [相关项目](#-相关项目)
+  - [来源声明](#-来源声明)
   - [许可证](#-许可证)
 
 ## 📖 CLI 参考
 
-使用 `octop-browser --help` 查看完整命令列表，使用
-`octop-browser <command> --help` 查看具体参数。`--version` 会打印已安装包的版本。
+使用 `happyclaw-browser --help` 查看完整命令列表，使用
+`happyclaw-browser <command> --help` 查看具体参数。`--version` 会打印已安装包的版本。
 
 | 命令 | 说明 |
 |------|------|
@@ -244,7 +248,7 @@ octop-browser replay run <recording_id>              # 回放
 把密钥放在环境变量里，回放时再传入：
 
 ```bash
-octop-browser replay run <recording_id> --input sensitive_value="$MY_PASSWORD"
+happyclaw-browser replay run <recording_id> --input sensitive_value="$MY_PASSWORD"
 ```
 
 ### DOM 级别
@@ -259,15 +263,15 @@ octop-browser replay run <recording_id> --input sensitive_value="$MY_PASSWORD"
 | `structured` | 不固定 | JSON，便于程序化处理 |
 
 ```bash
-octop-browser dom-tree --level minimal      # 低成本确认页面状态
-octop-browser dom-tree --level structured   # 供脚本消费的 JSON
+happyclaw-browser dom-tree --level minimal      # 低成本确认页面状态
+happyclaw-browser dom-tree --level structured   # 供脚本消费的 JSON
 ```
 
 ## 🐍 Python API
 
 ### 导出符号
 
-以下都可以从包根导入：`from octop_browser import ...`
+以下都可以从包根导入：`from happyclaw_browser import ...`
 
 | 符号 | 类型 | 作用 |
 |------|------|------|
@@ -276,7 +280,7 @@ octop-browser dom-tree --level structured   # 供脚本消费的 JSON
 | `ToolResult` | 模型 | 所有会话方法与 `browser_tool()` 的返回值 |
 | `ActionMetrics` | 模型 | 单次动作的耗时 / token 计数 |
 | `TabInfo` | 模型 | 单个标签页：`tab_id` · `url` · `title` · `active` |
-| `OctopSettings` | 模型 | 完整配置对象 —— 通过 `BrowserSession.create(settings=...)` 传入 |
+| `HappyclawSettings` | 模型 | 完整配置对象 —— 通过 `BrowserSession.create(settings=...)` 传入 |
 | `settings` | 实例 | 进程级默认配置，导入时从环境变量构建 |
 | `BrowserMode` | 类型 | `Literal["auto", "headed", "headless"]` |
 | `chromium_executable` | 函数 | 返回受管 Chromium 二进制路径，不存在时为 `None` |
@@ -325,13 +329,13 @@ async def log_metrics(metrics):  # metrics: ActionMetrics
 
 ## ⚙️ 配置
 
-所有配置项都在导入时从环境变量读取。你也可以显式构造 `OctopSettings`
+所有配置项都在导入时从环境变量读取。你也可以显式构造 `HappyclawSettings`
 并传给 `BrowserSession.create()`：
 
 ```python
-from octop_browser import BrowserSession, OctopSettings
+from happyclaw_browser import BrowserSession, HappyclawSettings
 
-settings = OctopSettings(cdp_port_start=9300, cdp_timeout=60.0)
+settings = HappyclawSettings(cdp_port_start=9300, cdp_timeout=60.0)
 session = await BrowserSession.create(profile="work", settings=settings)
 ```
 
@@ -381,6 +385,11 @@ make all              # 格式化 + 静态检查 + 类型检查 + 测试
 | 项目 | 说明 |
 |------|------|
 | [HappyClaw](https://github.com/xkx121029/HappyClaw) | 内置本库的自托管助手 |
+
+## 🏷️ 来源声明
+
+本项目基于 Octop（`TencentCloud/octop-browser`），版权 (c) 2026 OrcaKit，
+以 MIT 许可证授权。HappyClaw 维护独立分支——详见 [ATTRIBUTION.md](ATTRIBUTION.md)。
 
 ## 📄 许可证
 
