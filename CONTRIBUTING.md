@@ -1,13 +1,13 @@
 # Contributing to octop-browser
 
-Thank you for your interest in contributing! This guide applies to the [OrcaKit Harness](https://github.com/TencentCloud) / [Octop](https://github.com/TencentCloud/Octop) ecosystem.
+Thank you for your interest in contributing! This guide applies to [HappyClaw](https://github.com/xkx121029/HappyClaw) and the libraries it maintains.
 
 ## Getting started
 
 **Prerequisites:** Python 3.11+, Chromium (optional — integration tests skip when unavailable), [uv](https://docs.astral.sh/uv/)
 
 ```bash
-git clone https://github.com/TencentCloud/octop-browser.git
+git clone https://github.com/xkx121029/octop-browser.git
 cd octop-browser
 make install        # install dev dependencies
 make all            # lint + typecheck + test (CI ship bar)
@@ -99,14 +99,14 @@ Branch from `main` → PR into `main` (tag via the same auto-tag path if shippin
 
 # 贡献指南
 
-感谢你对 octop-browser 的关注！本指南适用于 [OrcaKit Harness](https://github.com/TencentCloud) / [Octop](https://github.com/TencentCloud/Octop) 生态。
+感谢你对 octop-browser 的关注！本指南适用于 [HappyClaw](https://github.com/xkx121029/HappyClaw) 及其维护的各库。
 
 ## 环境搭建
 
 **前置条件：** Python 3.11+；Chromium（可选，未安装时集成测试自动跳过）、[uv](https://docs.astral.sh/uv/)
 
 ```bash
-git clone https://github.com/TencentCloud/octop-browser.git
+git clone https://github.com/xkx121029/octop-browser.git
 cd octop-browser
 make install
 make all            # 提交 PR 前必须通过

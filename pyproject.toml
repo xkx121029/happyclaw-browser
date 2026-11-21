@@ -7,12 +7,12 @@ build-backend = "hatchling.build"
 
 [project]
 name = "octop-browser"
-version = "1.0.0"
+version = "1.0.1"
 description = "AI-friendly browser automation via CDP with profile-based login persistence"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"
-authors = [{ name = "orcakit" }]
+authors = [{ name = "xkx121029" }]
 keywords = ["browser", "automation", "ai", "cdp", "devtools"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -42,9 +42,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/TencentCloud/octop-browser"
-Repository = "https://github.com/TencentCloud/octop-browser"
-Issues = "https://github.com/TencentCloud/octop-browser/issues"
+Homepage = "https://github.com/xkx121029/octop-browser"
+Repository = "https://github.com/xkx121029/octop-browser"
+Issues = "https://github.com/xkx121029/octop-browser/issues"
 
 [project.scripts]
 octop-browser = "octop_browser.cli:main"

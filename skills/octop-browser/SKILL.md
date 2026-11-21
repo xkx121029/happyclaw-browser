@@ -135,4 +135,4 @@ the shell cleanly.
 
 ## Repository
 
-https://github.com/TencentCloud/octop-browser
+https://github.com/xkx121029/octop-browser

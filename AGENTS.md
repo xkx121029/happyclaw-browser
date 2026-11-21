@@ -125,7 +125,7 @@ Live at `skills/octop-browser/SKILL.md` (English) and `skills/octop-browser-zh/S
 - **mypy**: `strict = true`, `python_version = "3.11"`. New code must type-check under strict mode; reach for `from __future__ import annotations` (already used everywhere) before adding `# type: ignore`.
 - **No Playwright, no Selenium**: the dependency story is just `websockets`, `aiohttp`, `pydantic`, `mcp`. Don't add browser drivers.
 - **`localhost` is never hardcoded** — always go through `cfg.cdp_host`. A dedicated regression hazard if you forget.
-- **Repository URL** in docs is `https://github.com/TencentCloud/octop-browser.git`.
+- **Repository URL** in docs is `https://github.com/xkx121029/octop-browser.git`.
 
 ## Branching & release
 

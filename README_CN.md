@@ -8,10 +8,10 @@
 
 <p align="center">
   <a href="https://www.python.org/downloads/"><img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11%2B-blue?logo=python&logoColor=white" /></a>
-  <a href="https://github.com/TencentCloud/octop-browser/blob/main/LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green" /></a>
+  <a href="https://github.com/xkx121029/octop-browser/blob/main/LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green" /></a>
   <a href="https://pypi.org/project/octop-browser/"><img src="https://img.shields.io/pypi/v/octop-browser" alt="PyPI" /></a>
   <a href="https://github.com/astral-sh/ruff"><img alt="Code Style: Ruff" src="https://img.shields.io/badge/code%20style-ruff-000000?logo=ruff&logoColor=white" /></a>
-  <a href="https://github.com/TencentCloud/octop-browser"><img alt="GitHub stars" src="https://img.shields.io/github/stars/TencentCloud/octop-browser?style=social" /></a>
+  <a href="https://github.com/xkx121029/octop-browser"><img alt="GitHub stars" src="https://img.shields.io/github/stars/xkx121029/octop-browser?style=social" /></a>
 </p>
 
 <p align="center">
@@ -380,10 +380,7 @@ make all              # 格式化 + 静态检查 + 类型检查 + 测试
 
 | 项目 | 说明 |
 |------|------|
-| [harness-agent](https://github.com/TencentCloud/harness-agent) | 驱动浏览器工具的 Agent 运行时 |
-| [harness-memory](https://github.com/TencentCloud/harness-memory) | 面向浏览器 Agent 的记忆系统 |
-| [harness-gateway](https://github.com/TencentCloud/harness-gateway) | 多平台 IM 通道桥接 |
-| [Octop](https://github.com/TencentCloud/Octop) | 组合 Harness 技术栈的自托管助手 |
+| [HappyClaw](https://github.com/xkx121029/HappyClaw) | 内置本库的自托管助手 |
 
 ## 📄 许可证
 

@@ -222,7 +222,7 @@ git push -u {REMOTE} {RELEASE_BRANCH_PREFIX}{version}
 
 ```bash
 gh pr create \
-  --repo TencentCloud/octop-browser \
+  --repo xkx121029/octop-browser \
   --base {TARGET_BRANCH} \
   --head {RELEASE_BRANCH_PREFIX}{version} \
   --title "chore: release {version}" \

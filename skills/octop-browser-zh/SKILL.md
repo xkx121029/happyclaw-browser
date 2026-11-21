@@ -129,4 +129,4 @@ pip install octop-browser
 
 ## 代码仓库
 
-https://github.com/TencentCloud/octop-browser
+https://github.com/xkx121029/octop-browser

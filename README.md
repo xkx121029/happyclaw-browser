@@ -8,10 +8,10 @@
 
 <p align="center">
   <a href="https://www.python.org/downloads/"><img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11%2B-blue?logo=python&logoColor=white" /></a>
-  <a href="https://github.com/TencentCloud/octop-browser/blob/main/LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green" /></a>
+  <a href="https://github.com/xkx121029/octop-browser/blob/main/LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green" /></a>
   <a href="https://pypi.org/project/octop-browser/"><img src="https://img.shields.io/pypi/v/octop-browser" alt="PyPI" /></a>
   <a href="https://github.com/astral-sh/ruff"><img alt="Code Style: Ruff" src="https://img.shields.io/badge/code%20style-ruff-000000?logo=ruff&logoColor=white" /></a>
-  <a href="https://github.com/TencentCloud/octop-browser"><img alt="GitHub stars" src="https://img.shields.io/github/stars/TencentCloud/octop-browser?style=social" /></a>
+  <a href="https://github.com/xkx121029/octop-browser"><img alt="GitHub stars" src="https://img.shields.io/github/stars/xkx121029/octop-browser?style=social" /></a>
 </p>
 
 <p align="center">
@@ -387,10 +387,7 @@ every version live in [CHANGELOG.md](CHANGELOG.md).
 
 | Project | Description |
 |---------|-------------|
-| [harness-agent](https://github.com/TencentCloud/harness-agent) | Agent runtime that drives the browser tools |
-| [harness-memory](https://github.com/TencentCloud/harness-memory) | Memory system for browser-backed agents |
-| [harness-gateway](https://github.com/TencentCloud/harness-gateway) | Multi-platform IM channel bridge |
-| [Octop](https://github.com/TencentCloud/Octop) | The self-hosted assistant that composes the Harness stack |
+| [HappyClaw](https://github.com/xkx121029/HappyClaw) | The self-hosted assistant that ships this library |
 
 ## 📄 License
 

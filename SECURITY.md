@@ -11,7 +11,7 @@
 
 **Please do not open a public GitHub issue for security vulnerabilities.**
 
-- **GitHub Security Advisory:** [Create advisory](https://github.com/TencentCloud/octop-browser/security/advisories/new)
+- **GitHub Security Advisory:** [Create advisory](https://github.com/xkx121029/octop-browser/security/advisories/new)
 - **Email:** jubaoliang@gmail.com
 
 Include:
