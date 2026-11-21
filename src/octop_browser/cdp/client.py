@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 from collections.abc import Callable
@@ -51,6 +52,7 @@ class CDPClient:
         self._pending: dict[int, asyncio.Future[dict[str, Any]]] = {}
         self._listeners: dict[str, list[Callable[..., Any]]] = {}
         self._recv_task: asyncio.Task[None] | None = None
+        self._callback_tasks: set[asyncio.Task[Any]] = set()
         self._id = 0
 
     async def connect(self, ws_url: str) -> None:
@@ -91,22 +93,24 @@ class CDPClient:
             payload = json.dumps(
                 {"id": msg_id, "method": method, "params": params or {}}
             )
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             future: asyncio.Future[dict[str, Any]] = loop.create_future()
             self._pending[msg_id] = future
             try:
                 await self._ws.send(payload)
                 result = await asyncio.wait_for(future, timeout=self._timeout)
             except asyncio.TimeoutError as exc:
-                self._pending.pop(msg_id, None)
                 raise CDPSessionError(
                     f"Timeout waiting for response to {method}"
                 ) from exc
             except CDPSessionError:
                 raise
             except Exception as exc:
-                self._pending.pop(msg_id, None)
                 raise CDPSessionError(f"CDP send failed for {method}: {exc}") from exc
+            finally:
+                # Covers the cancelled path too: without this a cancelled
+                # send leaked its entry for the session's lifetime.
+                self._pending.pop(msg_id, None)
         finally:
             if tracker is not None:
                 tracker.activity_finished()
@@ -136,18 +140,33 @@ class CDPClient:
             listeners.remove(callback)
 
     async def close(self) -> None:
-        """Close the WebSocket connection."""
+        """Close the WebSocket connection and release everything it owns."""
         ws = self._ws
-        if ws:
-            self._ws = None
-            await ws.close()
-        if self._recv_task:
-            self._recv_task.cancel()
-            try:
-                await self._recv_task
-            except asyncio.CancelledError:
-                pass
+        self._ws = None
+        if ws is not None:
+            with contextlib.suppress(Exception):
+                await ws.close()
+        task = self._recv_task
+        self._recv_task = None
+        if task is not None:
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+        # A caller blocked on a reply would otherwise sit out the full
+        # ``cdp_timeout`` after the socket is already gone.
+        self._fail_pending(CDPSessionError("Connection closed"))
+        for callback_task in self._callback_tasks:
+            callback_task.cancel()
+        self._callback_tasks.clear()
         logger.debug("CDP connection closed")
+
+    def _fail_pending(self, exc: CDPSessionError) -> None:
+        """Resolve every in-flight command with *exc*."""
+        pending = list(self._pending.values())
+        self._pending.clear()
+        for future in pending:
+            if not future.done():
+                future.set_exception(exc)
 
     async def _recv_loop(self) -> None:
         """Background task: read messages and dispatch to pending futures or
@@ -158,7 +177,7 @@ class CDPClient:
                 msg: dict[str, Any] = json.loads(raw)
                 if "id" in msg:
                     future = self._pending.pop(msg["id"], None)
-                    if future and not future.done():
+                    if future is not None and not future.done():
                         future.set_result(msg)
                 elif "method" in msg:
                     method: str = msg["method"]
@@ -168,10 +187,12 @@ class CDPClient:
                     for cb in self._listeners.get(method, []):
                         result = cb(callback_params)
                         if asyncio.iscoroutine(result):
-                            asyncio.create_task(result)
+                            # Hold a reference: an unreferenced task can be
+                            # collected mid-flight, silently dropping the
+                            # event, and close() could never cancel it.
+                            task = asyncio.create_task(result)
+                            self._callback_tasks.add(task)
+                            task.add_done_callback(self._callback_tasks.discard)
         except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-except
             logger.debug("CDP recv loop ended: %s", exc)
-            for future in self._pending.values():
-                if not future.done():
-                    future.set_exception(CDPSessionError(f"Connection lost: {exc}"))
-            self._pending.clear()
+            self._fail_pending(CDPSessionError(f"Connection lost: {exc}"))
