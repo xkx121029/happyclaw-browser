@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from octop_browser.record import daemon
 
 
@@ -21,3 +23,13 @@ async def test_is_running_false_when_socket_absent(monkeypatch, tmp_path):
     monkeypatch.setattr(daemon, "socket_path", lambda: tmp_path / "absent.sock")
 
     assert await daemon.is_running() is False
+
+
+async def test_daemon_run_refuses_a_platform_without_unix_sockets(monkeypatch):
+    """The server side must fail with a sentence, not an AttributeError."""
+    import asyncio
+
+    monkeypatch.delattr(asyncio, "start_unix_server", raising=False)
+
+    with pytest.raises(RuntimeError, match="Unix domain sockets"):
+        await daemon.RecordDaemon().run()

@@ -105,13 +105,19 @@ class RecordDaemon:
             self.server.close()
 
     async def run(self) -> None:
+        start_unix_server = getattr(asyncio, "start_unix_server", None)
+        if start_unix_server is None:
+            raise RuntimeError(
+                "The record daemon needs Unix domain sockets, which this "
+                "platform does not provide."
+            )
         sock = socket_path()
         sock.parent.mkdir(parents=True, exist_ok=True)
         try:
             sock.unlink()
         except FileNotFoundError:
             pass
-        self.server = await asyncio.start_unix_server(self.handle, path=str(sock))
+        self.server = await start_unix_server(self.handle, path=str(sock))
         pid_path().write_text(str(os.getpid()), encoding="utf-8")
         try:
             async with self.server:
