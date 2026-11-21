@@ -41,7 +41,8 @@
   更早的 `HARNESS_*` 同名前缀同样按此规则兜底。
 - **数据目录**改为 `~/.happyclaw-browser/`（profiles、screenshots 与其下的状态
   文件一并改名）。升级时若旧的 `~/.octop-browser/` 仍然存在，会**继续使用它**，
-  并在标准错误输出打印一次提示，告诉你新路径在哪；**不会自动搬动任何数据**。
+  并抛一次 `UserWarning` 告诉你新路径在哪（默认可见，应用可自行过滤）；**不会自动
+  搬动任何数据**。
   把旧目录整体 `mv` 到 `~/.happyclaw-browser` 即可完成切换，登录态与历史录制随之过去。
   更早的 `~/.harness-browser/` 在两者都不存在时同样会被沿用。
 - **旧目录里的状态文件**同样兼容读取：`.octop-browser-profiles.json`（端口映射）、

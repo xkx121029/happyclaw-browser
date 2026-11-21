@@ -57,7 +57,7 @@ Environment variables (all optional):
 from __future__ import annotations
 
 import os
-import sys
+import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -105,11 +105,12 @@ def _hint_legacy_state_dir(legacy: Path, current: Path) -> None:
     if legacy in _hinted_state_dirs:
         return
     _hinted_state_dirs.add(legacy)
-    print(
-        f"happyclaw-browser: reusing the state directory {legacy} left by an "
+    warnings.warn(
+        f"happyclaw-browser is reusing the state directory {legacy} left by an "
         f"earlier release. Move it to {current} to adopt the new location; "
         "nothing was changed on disk.",
-        file=sys.stderr,
+        UserWarning,
+        stacklevel=2,
     )
 
 
