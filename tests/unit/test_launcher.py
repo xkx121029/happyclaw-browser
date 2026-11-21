@@ -856,3 +856,88 @@ async def test_attach_if_listening_falls_back_when_no_debugger_url(monkeypatch):
 
     with pytest.raises(RuntimeError, match="did not start"):
         await _l._attach_if_listening(9222)
+
+
+# ---------------------------------------------------------------------------
+# Launch failure paths must not orphan the Chrome they spawned
+# ---------------------------------------------------------------------------
+
+
+def _spawn_recorder(killed: list[bool]):
+    class _Proc:
+        returncode = None
+        pid = 4242
+
+        def poll(self):
+            return None
+
+        def kill(self):
+            killed.append(True)
+
+    def _popen(*_args, **_kwargs):
+        return _Proc()
+
+    return _popen
+
+
+async def _no_listener(_port):
+    return None
+
+
+async def test_launch_or_attach_kills_chrome_when_the_probe_explodes(
+    monkeypatch, tmp_path
+):
+    """A non-RuntimeError from the startup probe used to escape with the
+    child still running and owning the profile's user-data-dir."""
+    from octop_browser.cdp import launcher as _l
+    from octop_browser.profile import Profile
+
+    killed: list[bool] = []
+    monkeypatch.setattr(_l, "_attach_if_listening", _no_listener)
+    monkeypatch.setattr(_l, "find_chrome", lambda: "chrome")
+    monkeypatch.setattr(_l.subprocess, "Popen", _spawn_recorder(killed))
+
+    async def explode(*_args, **_kwargs):
+        raise ValueError("probe exploded")
+
+    monkeypatch.setattr(_l, "_get_ws_url", explode)
+
+    profile = Profile(name="t", data_dir=tmp_path / "p", cdp_port=19997)
+    with pytest.raises(ValueError, match="probe exploded"):
+        await _l.launch_or_attach(profile, headless=True)
+
+    assert killed == [True]
+
+
+async def test_launch_or_attach_keeps_a_healthy_chrome(monkeypatch, tmp_path):
+    from octop_browser.cdp import launcher as _l
+    from octop_browser.profile import Profile
+
+    killed: list[bool] = []
+    monkeypatch.setattr(_l, "_attach_if_listening", _no_listener)
+    monkeypatch.setattr(_l, "find_chrome", lambda: "chrome")
+    monkeypatch.setattr(_l.subprocess, "Popen", _spawn_recorder(killed))
+
+    async def ready(*_args, **_kwargs):
+        return "ws://devtools/browser/ok"
+
+    monkeypatch.setattr(_l, "_get_ws_url", ready)
+
+    profile = Profile(name="t", data_dir=tmp_path / "p", cdp_port=19996)
+    assert await _l.launch_or_attach(profile, headless=True) == "ws://devtools/browser/ok"
+    assert killed == []
+
+
+def test_kill_quietly_tolerates_none_and_dead_children():
+    from octop_browser.cdp.launcher import _kill_quietly
+
+    _kill_quietly(None)
+
+    class _Dead:
+        def poll(self):
+            return 0
+
+        def kill(self):
+            raise AssertionError("must not kill an exited child")
+
+    _kill_quietly(_Dead())

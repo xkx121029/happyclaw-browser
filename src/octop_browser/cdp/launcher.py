@@ -486,6 +486,15 @@ async def _attach_if_listening(port: int) -> str | None:
     return await _get_ws_url(port)
 
 
+def _kill_quietly(proc: subprocess.Popen[bytes] | None) -> None:
+    """Best-effort kill of a Chrome we spawned and failed to bring up."""
+    if proc is None:
+        return
+    with contextlib.suppress(Exception):
+        if proc.poll() is None:
+            proc.kill()
+
+
 async def terminate_browser(
     profile: Profile,
     *,
@@ -619,6 +628,7 @@ async def launch_or_attach(profile: Profile, headless: bool = False) -> str:
         # Chrome window foregrounded when running headed.
         if sys.platform != "darwin" or headless:
             popen_kwargs["start_new_session"] = True
+    proc: subprocess.Popen[bytes] | None = None
     try:
         proc = subprocess.Popen(cmd, **popen_kwargs)  # noqa: S603
         try:
@@ -656,6 +666,13 @@ async def launch_or_attach(profile: Profile, headless: bool = False) -> str:
             return await _get_ws_url(
                 profile.cdp_port, process=proc, stderr_file=stderr_file
             )
+    except BaseException:
+        # Cancellation, an unexpected probe error or an interrupted event
+        # loop must not leave a half-launched Chrome behind: nothing else
+        # holds a handle on this child, so it would outlive the parent as an
+        # orphan owning the profile's user-data-dir.
+        _kill_quietly(proc)
+        raise
     finally:
         stderr_file.close()
 
