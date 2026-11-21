@@ -54,7 +54,6 @@ import sys
 from collections.abc import AsyncGenerator, Awaitable, Callable
 from typing import TypedDict
 
-from octop_browser.cdp.launcher import _find_playwright_chromium
 from octop_browser.linux_deps import build_install_steps, manual_hint
 from octop_browser.playwright_download import (
     build_download_candidates,
@@ -97,6 +96,8 @@ def chromium_executable() -> str | None:
     Thin wrapper around the launcher's internal lookup so callers don't
     need to reach into a private module.
     """
+    from octop_browser.cdp.launcher import _find_playwright_chromium  # noqa: PLC0415
+
     return _find_playwright_chromium()
 
 

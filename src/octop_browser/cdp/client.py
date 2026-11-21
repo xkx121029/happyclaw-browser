@@ -7,12 +7,12 @@ import contextlib
 import json
 import logging
 from collections.abc import Callable
-from typing import Any, Protocol
-
-import websockets
-from websockets.asyncio.client import ClientConnection
+from typing import TYPE_CHECKING, Any, Protocol
 
 from octop_browser.settings import settings as _settings
+
+if TYPE_CHECKING:
+    from websockets.asyncio.client import ClientConnection
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +66,10 @@ class CDPClient:
         ``settings.cdp_max_message_size`` so screenshots up to that size
         come through cleanly.
         """
+        # Imported here rather than at module scope: importing the package
+        # to use anything else must not pay for the WebSocket stack.
+        import websockets
+
         ws = await websockets.connect(
             ws_url,
             max_size=_settings.cdp_max_message_size,

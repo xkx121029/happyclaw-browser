@@ -8,12 +8,9 @@ import logging
 import time
 from typing import Any
 
-import aiohttp
-
 from octop_browser.actions import capture, interact, js_eval
 from octop_browser.actions import navigate as nav_actions
 from octop_browser.cdp.client import CDPClient
-from octop_browser.cdp.launcher import get_page_ws_url, launch_or_attach
 from octop_browser.dom.builder import DOMBuilder, DOMLevel
 from octop_browser.dom.refs import RefCache
 from octop_browser.hooks import HooksMixin
@@ -56,6 +53,11 @@ class _InternalCDPSession:
             ws_url = self._cfg.cdp_ws_url
             logger.debug("Direct CDP connect to %s", ws_url)
         else:
+            from octop_browser.cdp.launcher import (  # noqa: PLC0415
+                get_page_ws_url,
+                launch_or_attach,
+            )
+
             await launch_or_attach(self._profile, headless=headless)
             ws_url = await get_page_ws_url(
                 self._profile.cdp_port, profile=self._profile
@@ -727,6 +729,8 @@ class BrowserSession(HooksMixin):
     async def _find_blank_target_id(self) -> str | None:
         if self._internal._cfg.cdp_ws_url:
             return None
+
+        import aiohttp
 
         host = self._internal._cfg.cdp_host
         port = self._internal._profile.cdp_port
