@@ -310,17 +310,20 @@ class BrowserSession(HooksMixin):
             "before_action", {"action": "dom_tree", "params": {"level": level}}
         )
         try:
-            doc = await self._internal.client.send("DOM.getDocument", {"depth": -1})
-            root = doc["root"]
-            info = await self._internal.client.send(
-                "Runtime.evaluate",
-                {
-                    "expression": (
-                        "JSON.stringify({url: location.href, title: document.title})"
-                    ),
-                    "returnByValue": True,
-                },
+            doc, info = await asyncio.gather(
+                self._internal.client.send("DOM.getDocument", {"depth": -1}),
+                self._internal.client.send(
+                    "Runtime.evaluate",
+                    {
+                        "expression": (
+                            "JSON.stringify({url: location.href,"
+                            " title: document.title})"
+                        ),
+                        "returnByValue": True,
+                    },
+                ),
             )
+            root = doc["root"]
             page_info = json.loads(info.get("result", {}).get("value", "{}"))
             url = page_info.get("url", "")
             title = page_info.get("title", "")
