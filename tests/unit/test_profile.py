@@ -65,7 +65,7 @@ def test_new_manager_does_not_reuse_port_assigned_to_other_profile(
 
 def test_existing_port_mapping_file_is_honored(tmp_profiles_dir: Path) -> None:
     tmp_profiles_dir.mkdir(parents=True)
-    (tmp_profiles_dir / ".octop-browser-profiles.json").write_text(
+    (tmp_profiles_dir / ".happyclaw-browser-profiles.json").write_text(
         '{"default": 9333, "work": 9334}', encoding="utf-8"
     )
 
@@ -81,7 +81,7 @@ def test_corrupt_port_mapping_file_rebuilds_from_start(
     tmp_profiles_dir: Path,
 ) -> None:
     tmp_profiles_dir.mkdir(parents=True)
-    (tmp_profiles_dir / ".octop-browser-profiles.json").write_text(
+    (tmp_profiles_dir / ".happyclaw-browser-profiles.json").write_text(
         "not json", encoding="utf-8"
     )
 
@@ -169,14 +169,54 @@ def test_save_target_ignores_empty_id(tmp_profiles_dir: Path) -> None:
 def test_load_target_handles_corrupt_state(tmp_profiles_dir: Path) -> None:
     pm = ProfileManager(base_dir=tmp_profiles_dir)
     p = pm.get_or_create("work")
-    (p.data_dir / ".octop-browser-target.json").write_text("not json", encoding="utf-8")
+    (p.data_dir / ".happyclaw-browser-target.json").write_text(
+        "not json", encoding="utf-8"
+    )
     assert p.load_target() is None
 
 
 def test_load_target_handles_wrong_shape(tmp_profiles_dir: Path) -> None:
     pm = ProfileManager(base_dir=tmp_profiles_dir)
     p = pm.get_or_create("work")
-    (p.data_dir / ".octop-browser-target.json").write_text(
+    (p.data_dir / ".happyclaw-browser-target.json").write_text(
         '{"target_id": null}', encoding="utf-8"
     )
     assert p.load_target() is None
+
+
+def test_port_mapping_from_the_previous_release_is_honored(
+    tmp_profiles_dir: Path,
+) -> None:
+    """Ports assigned before the rename must survive the upgrade."""
+    tmp_profiles_dir.mkdir(parents=True)
+    (tmp_profiles_dir / ".octop-browser-profiles.json").write_text(
+        '{"default": 9444}', encoding="utf-8"
+    )
+
+    pm = ProfileManager(base_dir=tmp_profiles_dir)
+
+    assert pm.get_or_create("default").cdp_port == 9444
+
+
+def test_target_from_the_previous_release_is_read(tmp_profiles_dir: Path) -> None:
+    pm = ProfileManager(base_dir=tmp_profiles_dir)
+    p = pm.get_or_create("work")
+    (p.data_dir / ".octop-browser-target.json").write_text(
+        '{"target_id": "t-old"}', encoding="utf-8"
+    )
+
+    assert p.load_target() == "t-old"
+
+
+def test_pid_from_the_previous_release_is_read_and_cleared(
+    tmp_profiles_dir: Path,
+) -> None:
+    pm = ProfileManager(base_dir=tmp_profiles_dir)
+    p = pm.get_or_create("work")
+    (p.data_dir / ".octop-browser-chrome.pid").write_text("4321", encoding="utf-8")
+
+    assert p.load_pid() == 4321
+
+    p.clear_pid()
+    assert not (p.data_dir / ".octop-browser-chrome.pid").exists()
+    assert p.load_pid() is None

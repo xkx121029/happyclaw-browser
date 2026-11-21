@@ -345,13 +345,17 @@ settings = HappyclawSettings(cdp_port_start=9300, cdp_timeout=60.0)
 session = await BrowserSession.create(profile="work", settings=settings)
 ```
 
+State lives in `~/.happyclaw-browser/`. A `~/.octop-browser/` left behind by an
+earlier release is reused as-is and reported once at startup — move it to the
+new path to finish the switch.
+
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `BROWSER_USE_MODE` | `auto` | Launch mode: `auto` / `headed` / `headless` (auto picks headed on macOS/Windows or when `DISPLAY` is set) |
 | `BROWSER_USE_CDP_WS_URL` | *(unset)* | Connect straight to an existing Chrome DevTools WebSocket URL — use this for remote / Docker Chrome and skip the launcher |
 | `BROWSER_USE_CHROME_BIN` | auto-detect | Absolute path to the Chrome / Chromium binary |
-| `BROWSER_USE_PROFILES_DIR` | `~/.octop-browser/profiles` | Base directory for Chrome user-data-dirs |
-| `BROWSER_USE_SCREENSHOTS_DIR` | `~/.octop-browser/screenshots` | Where the `screenshot` action writes PNGs |
+| `BROWSER_USE_PROFILES_DIR` | `~/.happyclaw-browser/profiles` | Base directory for Chrome user-data-dirs |
+| `BROWSER_USE_SCREENSHOTS_DIR` | `~/.happyclaw-browser/screenshots` | Where the `screenshot` action writes PNGs |
 | `BROWSER_USE_CDP_HOST` | `localhost` | Host serving Chrome's CDP endpoint |
 | `BROWSER_USE_CDP_PORT_START` | `9222` | First CDP debug port assigned to profiles |
 | `BROWSER_USE_CDP_TIMEOUT` | `30.0` | Seconds to wait for a CDP command response |

@@ -29,8 +29,8 @@
 - **CLI 入口** 由 `octop-browser` 改为 `happyclaw-browser`（子命令与参数不变）。
 - **配置类** `OctopSettings` → `HappyclawSettings`（字段与构造参数不变），
   同时是 `__all__` 里的导出名变更。
-- **MCP 服务标识** 由 `octop-browser` 改为 `happyclaw-browser`，MCP 客户端
-  按其名称区分服务端时需同步更新配置。
+- **MCP 服务标识** 由 `octop-browser` 改为 `happyclaw-browser`。按服务名
+  做白名单或配置的 MCP 客户端需要同步更新，否则会认为服务端不见了。
 - **logger 名** 随包名变为 `happyclaw_browser.*`；按旧名配置 `logging` 的地方需更新。
 
 ### 兼容性
@@ -39,9 +39,14 @@
   `OCTOP_MULTI_PIP_BOOTSTRAP` → `HAPPYCLAW_MULTI_PIP_BOOTSTRAP`。
   新名优先；只设旧名时仍然生效，但会抛一次 `DeprecationWarning`，后续版本移除。
   更早的 `HARNESS_*` 同名前缀同样按此规则兜底。
-- **数据目录不变**：配置目录仍是 `~/.octop-browser/`（profiles、screenshots、
-  状态文件 `.octop-browser-*.json` / `.octop-browser-chrome.pid` 均保持原名），
-  已登录的 profile 与历史录制无需迁移。
+- **数据目录**改为 `~/.happyclaw-browser/`（profiles、screenshots 与其下的状态
+  文件一并改名）。升级时若旧的 `~/.octop-browser/` 仍然存在，会**继续使用它**，
+  并在标准错误输出打印一次提示，告诉你新路径在哪；**不会自动搬动任何数据**。
+  把旧目录整体 `mv` 到 `~/.happyclaw-browser` 即可完成切换，登录态与历史录制随之过去。
+  更早的 `~/.harness-browser/` 在两者都不存在时同样会被沿用。
+- **旧目录里的状态文件**同样兼容读取：`.octop-browser-profiles.json`（端口映射）、
+  `.octop-browser-target.json`（目标标签页）、`.octop-browser-chrome.pid`（受管
+  Chrome 的进程号）会被当作回退来源，新写入一律用 `.happyclaw-browser-*` 新名。
 - **`BROWSER_USE_*` 环境变量不变**，取值语义与默认值全部保持。
 
 ### 其他

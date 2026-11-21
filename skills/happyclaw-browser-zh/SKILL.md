@@ -75,7 +75,7 @@ metrics / metadata / error），适合脚本解析；不加则输出人类友好
 `metadata` 会带 `url` / `title` / `width` / `height` / `size_kb` / `full_page`。
 
 - 默认路径：`BROWSER_USE_SCREENSHOTS_DIR/happyclaw-<时间戳>.png`
-  （默认 `~/.octop-browser/screenshots/`）
+  （默认 `~/.happyclaw-browser/screenshots/`）
 - `--full-page` —— 一次抓整页可滚动区域
 - `--element-ref btn_2` —— 截某个元素（与 `--full-page` 互斥，元素优先）
 - `--path /tmp/latest.png` —— 固定路径，重复调用覆盖
@@ -87,15 +87,15 @@ metrics / metadata / error），适合脚本解析；不加则输出人类友好
 | 变量 | 默认 | 用途 |
 |---|---|---|
 | `BROWSER_USE_MODE` | `auto` | `auto` / `headed` / `headless`（auto 按 `DISPLAY` 自动判定） |
-| `BROWSER_USE_PROFILES_DIR` | `~/.octop-browser/profiles` | Chrome user-data-dir 根目录 |
-| `BROWSER_USE_SCREENSHOTS_DIR` | `~/.octop-browser/screenshots` | 截图默认输出目录 |
+| `BROWSER_USE_PROFILES_DIR` | `~/.happyclaw-browser/profiles` | Chrome user-data-dir 根目录 |
+| `BROWSER_USE_SCREENSHOTS_DIR` | `~/.happyclaw-browser/screenshots` | 截图默认输出目录 |
 | `BROWSER_USE_CHROME_BIN` | 自动探测 | Chrome 路径（也会自动发现 Playwright 自带的 Chromium） |
 | `BROWSER_USE_CDP_HOST` | `localhost` | 远端/Docker 中的 Chrome 主机 |
 | `BROWSER_USE_CDP_WS_URL` | — | 跳过启动器，直接连指定 WebSocket URL |
 
 ## 登录态复用
 
-Profile 数据存储在 `~/.octop-browser/profiles/<名称>/`，复用相同 profile 名
+Profile 数据存储在 `~/.happyclaw-browser/profiles/<名称>/`，复用相同 profile 名
 即可自动复用 Chrome cookies，无需重新认证。
 
 ```bash

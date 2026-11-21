@@ -78,7 +78,7 @@ With `--json`, the response also includes `metadata` carrying
 `url` / `title` / `width` / `height` / `size_kb` / `full_page`.
 
 - Default path: `BROWSER_USE_SCREENSHOTS_DIR/happyclaw-<timestamp>.png`
-  (default `~/.octop-browser/screenshots/`)
+  (default `~/.happyclaw-browser/screenshots/`)
 - `--full-page` — capture the entire scrollable page in one call
 - `--element-ref btn_2` — crop to a specific element (mutually exclusive
   with `--full-page`; element wins)
@@ -91,15 +91,15 @@ All knobs are env-driven; no code changes between dev / CI / prod.
 | Variable | Default | Use |
 |---|---|---|
 | `BROWSER_USE_MODE` | `auto` | `auto` / `headed` / `headless` (auto picks based on `DISPLAY`) |
-| `BROWSER_USE_PROFILES_DIR` | `~/.octop-browser/profiles` | Where Chrome user-data-dirs live |
-| `BROWSER_USE_SCREENSHOTS_DIR` | `~/.octop-browser/screenshots` | Default screenshot output directory |
+| `BROWSER_USE_PROFILES_DIR` | `~/.happyclaw-browser/profiles` | Where Chrome user-data-dirs live |
+| `BROWSER_USE_SCREENSHOTS_DIR` | `~/.happyclaw-browser/screenshots` | Default screenshot output directory |
 | `BROWSER_USE_CHROME_BIN` | auto-detect | Path to Chrome (also auto-detects Playwright's bundled Chromium) |
 | `BROWSER_USE_CDP_HOST` | `localhost` | Remote/Docker Chrome host |
 | `BROWSER_USE_CDP_WS_URL` | — | Bypass launcher; connect directly to a WS URL |
 
 ## Login State Reuse
 
-Profile data lives in `~/.octop-browser/profiles/<name>/`. Reusing the same
+Profile data lives in `~/.happyclaw-browser/profiles/<name>/`. Reusing the same
 profile name in future sessions reuses Chrome cookies — no re-authentication
 needed.
 

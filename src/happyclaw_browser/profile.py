@@ -21,16 +21,36 @@ logger = logging.getLogger(__name__)
 # short-lived (one process per command) so without this file each new process
 # would attach to whatever target Chrome happens to list first — which can be
 # a stale ``about:blank`` tab rather than the one the user was driving.
-_TARGET_STATE_FILE = ".octop-browser-target.json"
-_PROFILE_PORTS_FILE = ".octop-browser-profiles.json"
+_TARGET_STATE_FILE = ".happyclaw-browser-target.json"
+_PROFILE_PORTS_FILE = ".happyclaw-browser-profiles.json"
 # Pid of the Chrome this library launched for the profile, used to stop an
 # instance that ignores Browser.close.
-_PID_STATE_FILE = ".octop-browser-chrome.pid"
+_PID_STATE_FILE = ".happyclaw-browser-chrome.pid"
 
 # Older alternate filenames, read as a fallback so an existing profile keeps
-# its port assignment and target binding instead of re-attaching to a random tab.
-_LEGACY_TARGET_STATE_FILE = ".harness-browser-target.json"
-_LEGACY_PROFILE_PORTS_FILE = ".harness-browser-profiles.json"
+# its port assignment, target binding and launched-pid record instead of
+# re-attaching to a random tab or losing the process it can still stop.
+_LEGACY_TARGET_STATE_FILES = (
+    ".octop-browser-target.json",
+    ".harness-browser-target.json",
+)
+_LEGACY_PROFILE_PORTS_FILES = (
+    ".octop-browser-profiles.json",
+    ".harness-browser-profiles.json",
+)
+_LEGACY_PID_STATE_FILES = (".octop-browser-chrome.pid",)
+
+
+def _readable_state_file(directory: Path, name: str, legacy: tuple[str, ...]) -> Path:
+    """Return the first of ``name`` / ``legacy`` that exists under ``directory``."""
+    path = directory / name
+    if path.is_file():
+        return path
+    for old in legacy:
+        candidate = directory / old
+        if candidate.is_file():
+            return candidate
+    return path
 
 
 @dataclass
@@ -55,12 +75,11 @@ class Profile:
         Used by :func:`happyclaw_browser.cdp.launcher.get_page_ws_url` to
         re-attach to the same tab across CLI invocations.
         """
-        path = self._target_state_path
+        path = _readable_state_file(
+            self.data_dir, _TARGET_STATE_FILE, _LEGACY_TARGET_STATE_FILES
+        )
         if not path.is_file():
-            legacy = self.data_dir / _LEGACY_TARGET_STATE_FILE
-            if not legacy.is_file():
-                return None
-            path = legacy
+            return None
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError) as exc:
@@ -88,11 +107,12 @@ class Profile:
 
     def clear_target(self) -> None:
         """Forget the cached target id (best-effort)."""
-        path = self._target_state_path
-        try:
-            path.unlink(missing_ok=True)
-        except OSError as exc:
-            logger.debug("Could not unlink %s: %s", path, exc)
+        for name in (_TARGET_STATE_FILE, *_LEGACY_TARGET_STATE_FILES):
+            path = self.data_dir / name
+            try:
+                path.unlink(missing_ok=True)
+            except OSError as exc:
+                logger.debug("Could not unlink %s: %s", path, exc)
 
     # ------------------------------------------------------------------
     # Launched-process tracking
@@ -119,8 +139,11 @@ class Profile:
 
     def load_pid(self) -> int | None:
         """Return the pid recorded for this profile, or ``None``."""
+        path = _readable_state_file(
+            Path(self.data_dir), _PID_STATE_FILE, _LEGACY_PID_STATE_FILES
+        )
         try:
-            raw = self._pid_path.read_text(encoding="utf-8").strip()
+            raw = path.read_text(encoding="utf-8").strip()
             pid = int(raw)
         except (OSError, ValueError):
             return None
@@ -128,10 +151,12 @@ class Profile:
 
     def clear_pid(self) -> None:
         """Forget the recorded pid (best-effort)."""
-        try:
-            self._pid_path.unlink(missing_ok=True)
-        except OSError as exc:
-            logger.debug("Could not unlink %s: %s", self._pid_path, exc)
+        for name in (_PID_STATE_FILE, *_LEGACY_PID_STATE_FILES):
+            path = Path(self.data_dir) / name
+            try:
+                path.unlink(missing_ok=True)
+            except OSError as exc:
+                logger.debug("Could not unlink %s: %s", path, exc)
 
 
 class ProfileManager:
@@ -163,12 +188,11 @@ class ProfileManager:
         return self._base_dir / _PROFILE_PORTS_FILE
 
     def _load_ports(self) -> dict[str, int]:
-        path = self._ports_path
+        path = _readable_state_file(
+            self._base_dir, _PROFILE_PORTS_FILE, _LEGACY_PROFILE_PORTS_FILES
+        )
         if not path.is_file():
-            legacy = self._base_dir / _LEGACY_PROFILE_PORTS_FILE
-            if not legacy.is_file():
-                return {}
-            path = legacy
+            return {}
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError) as exc:

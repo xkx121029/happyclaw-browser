@@ -70,7 +70,7 @@ Env vars (all optional):
 
 | Variable | Default | Used in |
 |---|---|---|
-| `BROWSER_USE_PROFILES_DIR` | `~/.octop-browser/profiles` | `ProfileManager.__init__` |
+| `BROWSER_USE_PROFILES_DIR` | `~/.happyclaw-browser/profiles` | `ProfileManager.__init__` |
 | `BROWSER_USE_CDP_HOST` | `localhost` | `launcher._get_ws_url`, `_port_in_use`, `get_page_ws_url`, `session.list_tabs`; also drives `--remote-debugging-address` when non-loopback |
 | `BROWSER_USE_CDP_PORT_START` | `9222` | `ProfileManager` port assignment |
 | `BROWSER_USE_MODE` | `auto` | resolved via `mode.resolve_headless()` |

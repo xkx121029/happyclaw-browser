@@ -967,7 +967,9 @@ def test_profile_load_pid_ignores_garbage(tmp_path):
     from happyclaw_browser.profile import Profile
 
     profile = Profile(name="p", data_dir=tmp_path, cdp_port=9222)
-    (tmp_path / ".octop-browser-chrome.pid").write_text("not-a-pid", encoding="utf-8")
+    (tmp_path / ".happyclaw-browser-chrome.pid").write_text(
+        "not-a-pid", encoding="utf-8"
+    )
     assert profile.load_pid() is None
 
 

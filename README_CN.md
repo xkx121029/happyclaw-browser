@@ -339,13 +339,16 @@ settings = HappyclawSettings(cdp_port_start=9300, cdp_timeout=60.0)
 session = await BrowserSession.create(profile="work", settings=settings)
 ```
 
+配置与数据默认放在 `~/.happyclaw-browser/`。若旧版留下的 `~/.octop-browser/` 还在，
+会原样沿用并在启动时提示一次——把它移到新路径即可完成切换。
+
 | 变量 | 默认值 | 作用 |
 |------|--------|------|
 | `BROWSER_USE_MODE` | `auto` | 启动模式：`auto` / `headed` / `headless`（auto 在 macOS/Windows 或设置了 `DISPLAY` 时使用有头模式） |
 | `BROWSER_USE_CDP_WS_URL` | *（未设置）* | 直接连接已有的 Chrome DevTools WebSocket URL —— 用于远程 / Docker 中的 Chrome，跳过本地启动器 |
 | `BROWSER_USE_CHROME_BIN` | 自动探测 | Chrome / Chromium 可执行文件的绝对路径 |
-| `BROWSER_USE_PROFILES_DIR` | `~/.octop-browser/profiles` | Chrome user-data-dir 的根目录 |
-| `BROWSER_USE_SCREENSHOTS_DIR` | `~/.octop-browser/screenshots` | `screenshot` 动作写入 PNG 的目录 |
+| `BROWSER_USE_PROFILES_DIR` | `~/.happyclaw-browser/profiles` | Chrome user-data-dir 的根目录 |
+| `BROWSER_USE_SCREENSHOTS_DIR` | `~/.happyclaw-browser/screenshots` | `screenshot` 动作写入 PNG 的目录 |
 | `BROWSER_USE_CDP_HOST` | `localhost` | 提供 CDP 端点的主机 |
 | `BROWSER_USE_CDP_PORT_START` | `9222` | 分配给 profile 的起始 CDP 调试端口 |
 | `BROWSER_USE_CDP_TIMEOUT` | `30.0` | 等待 CDP 命令响应的秒数 |

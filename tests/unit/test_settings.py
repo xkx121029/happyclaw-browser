@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 from pathlib import Path
 
 from happyclaw_browser.settings import HappyclawSettings, state_dir
@@ -9,8 +10,8 @@ from happyclaw_browser.settings import HappyclawSettings, state_dir
 
 def test_defaults_match_expected():
     s = HappyclawSettings()
-    # state_dir() resolves to ~/.octop-browser, or a legacy alternate
-    # directory when that one already exists on this machine.
+    # state_dir() resolves to ~/.happyclaw-browser, or a directory left by an
+    # earlier release when that one already exists on this machine.
     assert s.profiles_dir == state_dir() / "profiles"
     assert s.screenshots_dir == state_dir() / "screenshots"
     assert s.cdp_host == "localhost"
@@ -29,24 +30,52 @@ def test_defaults_match_expected():
 
 def test_state_dir_prefers_new_name_for_fresh_installs(monkeypatch, tmp_path):
     monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
-    assert state_dir() == tmp_path / ".octop-browser"
+    assert state_dir() == tmp_path / ".happyclaw-browser"
 
 
-def test_state_dir_keeps_using_legacy_dir_when_present(monkeypatch, tmp_path):
-    """An existing legacy state dir holds login cookies: keep using it."""
-    from happyclaw_browser.settings import _LEGACY_STATE_DIR
+def test_state_dir_keeps_using_legacy_dir_when_present(monkeypatch, tmp_path, capsys):
+    """An earlier release's state dir holds login cookies: keep using it."""
+    from happyclaw_browser.settings import _LEGACY_STATE_DIRS
 
-    legacy = tmp_path / _LEGACY_STATE_DIR
+    legacy = tmp_path / _LEGACY_STATE_DIRS[0]
     legacy.mkdir()
     monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
     assert state_dir() == legacy
     assert HappyclawSettings().profiles_dir == legacy / "profiles"
+    assert "Move it to" in capsys.readouterr().err
+
+
+def test_state_dir_falls_back_through_every_legacy_name(monkeypatch, tmp_path):
+    from happyclaw_browser.settings import _LEGACY_STATE_DIRS
+
+    oldest = tmp_path / _LEGACY_STATE_DIRS[-1]
+    oldest.mkdir()
+    monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
+    assert state_dir() == oldest
+
+
+def test_state_dir_migration_hint_prints_once_per_process(
+    monkeypatch, tmp_path, capsys
+):
+    from happyclaw_browser.settings import _LEGACY_STATE_DIRS
+
+    legacy = tmp_path / _LEGACY_STATE_DIRS[0]
+    legacy.mkdir()
+    monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
+    monkeypatch.setattr(
+        importlib.import_module("happyclaw_browser.settings"),
+        "_hinted_state_dirs",
+        set(),
+    )
+    for _ in range(3):
+        assert state_dir() == legacy
+    assert capsys.readouterr().err.count("Move it to") == 1
 
 
 def test_state_dir_prefers_new_dir_when_both_exist(monkeypatch, tmp_path):
-    from happyclaw_browser.settings import _LEGACY_STATE_DIR, _STATE_DIR
+    from happyclaw_browser.settings import _LEGACY_STATE_DIRS, _STATE_DIR
 
-    (tmp_path / _LEGACY_STATE_DIR).mkdir()
+    (tmp_path / _LEGACY_STATE_DIRS[0]).mkdir()
     (tmp_path / _STATE_DIR).mkdir()
     monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
     assert state_dir() == tmp_path / _STATE_DIR
