@@ -23,6 +23,9 @@ logger = logging.getLogger(__name__)
 # a stale ``about:blank`` tab rather than the one the user was driving.
 _TARGET_STATE_FILE = ".octop-browser-target.json"
 _PROFILE_PORTS_FILE = ".octop-browser-profiles.json"
+# Pid of the Chrome this library launched for the profile, used to stop an
+# instance that ignores Browser.close.
+_PID_STATE_FILE = ".octop-browser-chrome.pid"
 
 # Older alternate filenames, read as a fallback so an existing profile keeps
 # its port assignment and target binding instead of re-attaching to a random tab.
@@ -90,6 +93,45 @@ class Profile:
             path.unlink(missing_ok=True)
         except OSError as exc:
             logger.debug("Could not unlink %s: %s", path, exc)
+
+    # ------------------------------------------------------------------
+    # Launched-process tracking
+    # ------------------------------------------------------------------
+
+    @property
+    def _pid_path(self) -> Path:
+        return Path(self.data_dir) / _PID_STATE_FILE
+
+    def save_pid(self, pid: int) -> None:
+        """Remember the Chrome we launched for this profile.
+
+        ``terminate_browser`` needs the pid to stop a browser that ignores
+        ``Browser.close``; on Windows there is no other way to reach a
+        specific instance, since the POSIX ``pkill --user-data-dir`` pattern
+        does not exist there.
+        """
+        if pid <= 0:
+            return
+        try:
+            self._pid_path.write_text(str(pid), encoding="utf-8")
+        except OSError as exc:
+            logger.debug("Could not write %s: %s", self._pid_path, exc)
+
+    def load_pid(self) -> int | None:
+        """Return the pid recorded for this profile, or ``None``."""
+        try:
+            raw = self._pid_path.read_text(encoding="utf-8").strip()
+            pid = int(raw)
+        except (OSError, ValueError):
+            return None
+        return pid if pid > 0 else None
+
+    def clear_pid(self) -> None:
+        """Forget the recorded pid (best-effort)."""
+        try:
+            self._pid_path.unlink(missing_ok=True)
+        except OSError as exc:
+            logger.debug("Could not unlink %s: %s", self._pid_path, exc)
 
 
 class ProfileManager:

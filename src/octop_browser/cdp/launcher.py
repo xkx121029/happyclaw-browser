@@ -495,6 +495,43 @@ def _kill_quietly(proc: subprocess.Popen[bytes] | None) -> None:
             proc.kill()
 
 
+def _kill_recorded_pid(profile: Profile) -> bool:
+    """Force-stop the Chrome this library launched for *profile*.
+
+    ``pkill_chrome_profile`` only exists on POSIX. On Windows the recorded pid
+    is the only handle on the specific instance, and without it a browser that
+    ignores ``Browser.close`` keeps its profile locked and its CDP port bound,
+    so every later launch of the same profile dies at startup.
+
+    The pid comes from our own launch and is cleared once used, which bounds
+    the window for a recycled pid to kill something else.
+    """
+    pid = profile.load_pid()
+    if pid is None:
+        return False
+    killed = False
+    try:
+        if os.name == "nt":
+            result = subprocess.run(  # noqa: S603
+                ["taskkill", "/PID", str(pid), "/T", "/F"],
+                check=False,
+                capture_output=True,
+                timeout=10,
+            )
+            killed = result.returncode == 0
+        else:
+            import signal
+
+            with contextlib.suppress(ProcessLookupError):
+                os.killpg(os.getpgid(pid), signal.SIGKILL)
+                killed = True
+    except Exception:  # noqa: BLE001  # pylint: disable=broad-except
+        logger.debug("Could not kill recorded Chrome pid %s", pid, exc_info=True)
+    if killed:
+        profile.clear_pid()
+    return killed
+
+
 async def terminate_browser(
     profile: Profile,
     *,
@@ -510,6 +547,7 @@ async def terminate_browser(
     if cdp_host not in {"localhost", "127.0.0.1", "::1"}:
         return False
     if not await _port_in_use_at(cdp_host, profile.cdp_port):
+        profile.clear_pid()
         return False
 
     authority = (
@@ -546,6 +584,10 @@ async def terminate_browser(
     )
 
     killed = await asyncio.to_thread(pkill_chrome_profile, profile.data_dir)
+    if not killed:
+        # POSIX pkill is unavailable on Windows, and even there a wedged
+        # browser survives it; the recorded pid is the reliable handle.
+        killed = await asyncio.to_thread(_kill_recorded_pid, profile)
     if killed:
         await asyncio.sleep(0.1)
         await asyncio.to_thread(clear_profile_locks, profile.data_dir)
@@ -632,9 +674,11 @@ async def launch_or_attach(profile: Profile, headless: bool = False) -> str:
     try:
         proc = subprocess.Popen(cmd, **popen_kwargs)  # noqa: S603
         try:
-            return await _get_ws_url(
+            ws_url = await _get_ws_url(
                 profile.cdp_port, process=proc, stderr_file=stderr_file
             )
+            profile.save_pid(proc.pid)
+            return ws_url
         except RuntimeError as exc:
             msg = str(exc)
             if (
@@ -663,9 +707,11 @@ async def launch_or_attach(profile: Profile, headless: bool = False) -> str:
             )
             popen_kwargs["stderr"] = stderr_file
             proc = subprocess.Popen(cmd, **popen_kwargs)  # noqa: S603
-            return await _get_ws_url(
+            ws_url = await _get_ws_url(
                 profile.cdp_port, process=proc, stderr_file=stderr_file
             )
+            profile.save_pid(proc.pid)
+            return ws_url
     except BaseException:
         # Cancellation, an unexpected probe error or an interrupted event
         # loop must not leave a half-launched Chrome behind: nothing else

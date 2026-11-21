@@ -941,3 +941,128 @@ def test_kill_quietly_tolerates_none_and_dead_children():
             raise AssertionError("must not kill an exited child")
 
     _kill_quietly(_Dead())
+
+
+# ---------------------------------------------------------------------------
+# Killing the Chrome we launched (Windows has no pkill equivalent)
+# ---------------------------------------------------------------------------
+
+
+def test_profile_pid_round_trip(tmp_path):
+    from octop_browser.profile import Profile
+
+    profile = Profile(name="p", data_dir=tmp_path, cdp_port=9222)
+    assert profile.load_pid() is None
+
+    profile.save_pid(4321)
+    assert profile.load_pid() == 4321
+
+    profile.clear_pid()
+    assert profile.load_pid() is None
+
+
+def test_profile_load_pid_ignores_garbage(tmp_path):
+    from octop_browser.profile import Profile
+
+    profile = Profile(name="p", data_dir=tmp_path, cdp_port=9222)
+    (tmp_path / ".octop-browser-chrome.pid").write_text("not-a-pid", encoding="utf-8")
+    assert profile.load_pid() is None
+
+
+def test_kill_recorded_pid_uses_taskkill_on_windows(monkeypatch, tmp_path):
+    import sys as _sys
+
+    from octop_browser.cdp import launcher as _l
+    from octop_browser.profile import Profile
+
+    profile = Profile(name="p", data_dir=tmp_path, cdp_port=9222)
+    profile.save_pid(4321)
+    calls: list[list[str]] = []
+
+    class _Result:
+        returncode = 0
+
+    monkeypatch.setattr(_sys, "platform", "win32")
+    monkeypatch.setattr(_l.os, "name", "nt")
+    monkeypatch.setattr(
+        _l.subprocess, "run", lambda cmd, **kw: calls.append(cmd) or _Result()
+    )
+
+    assert _l._kill_recorded_pid(profile) is True
+    assert calls == [["taskkill", "/PID", "4321", "/T", "/F"]]
+    assert profile.load_pid() is None, "a used pid must not linger"
+
+
+def test_kill_recorded_pid_is_false_without_a_recorded_pid(tmp_path):
+    from octop_browser.cdp.launcher import _kill_recorded_pid
+    from octop_browser.profile import Profile
+
+    profile = Profile(name="p", data_dir=tmp_path, cdp_port=9222)
+    assert _kill_recorded_pid(profile) is False
+
+
+def test_kill_recorded_pid_keeps_the_pid_when_the_kill_fails(monkeypatch, tmp_path):
+    import sys as _sys
+
+    from octop_browser.cdp import launcher as _l
+    from octop_browser.profile import Profile
+
+    profile = Profile(name="p", data_dir=tmp_path, cdp_port=9222)
+    profile.save_pid(4321)
+
+    class _Result:
+        returncode = 1
+
+    monkeypatch.setattr(_sys, "platform", "win32")
+    monkeypatch.setattr(_l.os, "name", "nt")
+    monkeypatch.setattr(_l.subprocess, "run", lambda cmd, **kw: _Result())
+
+    assert _l._kill_recorded_pid(profile) is False
+    assert profile.load_pid() == 4321
+
+
+async def test_terminate_browser_falls_back_to_the_recorded_pid(monkeypatch, tmp_path):
+    """Graceful close fails and pkill is a POSIX-only no-op → the pid is used."""
+    from octop_browser.cdp import launcher as _l
+    from octop_browser.cdp.launch_prep import pkill_chrome_profile
+    from octop_browser.profile import Profile
+
+    profile = Profile(name="p", data_dir=tmp_path, cdp_port=9222)
+    profile.save_pid(4321)
+    killed_with: list[object] = []
+
+    async def port_in_use(_host, _port):
+        return True
+
+    def fake_pid_kill(p):
+        killed_with.append(p)
+        p.clear_pid()
+        return True
+
+    monkeypatch.setattr(_l, "_port_in_use_at", port_in_use)
+    monkeypatch.setattr(_l, "_kill_recorded_pid", fake_pid_kill)
+    monkeypatch.setattr(_l, "pkill_chrome_profile", pkill_chrome_profile, raising=False)
+    monkeypatch.setattr(
+        "octop_browser.cdp.launch_prep.pkill_chrome_profile", lambda _d: False
+    )
+    monkeypatch.setattr(
+        "octop_browser.cdp.launch_prep.clear_profile_locks", lambda _d: []
+    )
+
+    class _NoWS:
+        def __init__(self, *_a, **_kw):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+        def get(self, _url):
+            raise ConnectionError("browser endpoint is wedged")
+
+    monkeypatch.setattr(_l.aiohttp, "ClientSession", _NoWS)
+
+    assert await _l.terminate_browser(profile, timeout=0.0) is True
+    assert killed_with == [profile]
