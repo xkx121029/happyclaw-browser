@@ -61,15 +61,25 @@ class _InternalCDPSession:
                 self._profile.cdp_port, profile=self._profile
             )
         await self._client.connect(ws_url)
-        await self._client.enable_domain("Page")
-        await self._client.enable_domain("DOM")
-        await self._client.enable_domain("Runtime")
         # Note: the "Input" domain has no .enable method in CDP — input events
         # are dispatched directly via Input.dispatch* commands without enabling.
-        await self._apply_viewport()
+        await self._prime_page()
         self._connected = True
         if self._idle_controller is not None:
             self._idle_controller.start()
+
+    async def _prime_page(self) -> None:
+        """Enable the domains the actions rely on and pin the page viewport.
+
+        The four commands are independent — none reads another's result — so
+        they share one round trip instead of queueing four.
+        """
+        await asyncio.gather(
+            self._client.enable_domain("Page"),
+            self._client.enable_domain("DOM"),
+            self._client.enable_domain("Runtime"),
+            self._apply_viewport(),
+        )
 
     async def _apply_viewport(self) -> None:
         """Pin the page viewport to the configured CSS-pixel dimensions.
@@ -140,10 +150,7 @@ class _InternalCDPSession:
         )
         self._ref_cache.invalidate()
         await self._client.connect(str(match["webSocketDebuggerUrl"]))
-        await self._client.enable_domain("Page")
-        await self._client.enable_domain("DOM")
-        await self._client.enable_domain("Runtime")
-        await self._apply_viewport()
+        await self._prime_page()
         self._profile.save_target(target_id)
 
     async def close(self, *, kill: bool = False) -> None:
