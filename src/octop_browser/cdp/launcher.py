@@ -522,9 +522,14 @@ def _kill_recorded_pid(profile: Profile) -> bool:
         else:
             import signal
 
-            with contextlib.suppress(ProcessLookupError):
-                os.killpg(os.getpgid(pid), signal.SIGKILL)
-                killed = True
+            # getattr: these are absent from typeshed on Windows, where this
+            # branch never runs anyway.
+            killpg = getattr(os, "killpg", None)
+            getpgid = getattr(os, "getpgid", None)
+            if killpg is not None and getpgid is not None:
+                with contextlib.suppress(ProcessLookupError):
+                    killpg(getpgid(pid), getattr(signal, "SIGKILL", 9))
+                    killed = True
     except Exception:  # noqa: BLE001  # pylint: disable=broad-except
         logger.debug("Could not kill recorded Chrome pid %s", pid, exc_info=True)
     if killed:

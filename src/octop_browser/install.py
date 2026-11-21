@@ -90,14 +90,26 @@ class InstallEvent(TypedDict, total=False):
     error: str
 
 
+def _find_playwright_chromium() -> str | None:
+    """Resolve the launcher's Chromium lookup without importing it eagerly.
+
+    ``octop_browser.cdp.launcher`` owns aiohttp, and this module is imported
+    by the package's ``__init__`` for every caller - including the many that
+    never install or launch a browser.
+    """
+    from octop_browser.cdp.launcher import (  # noqa: PLC0415
+        _find_playwright_chromium as lookup,
+    )
+
+    return lookup()
+
+
 def chromium_executable() -> str | None:
     """Return the path to a Playwright-managed Chromium binary, or ``None``.
 
     Thin wrapper around the launcher's internal lookup so callers don't
     need to reach into a private module.
     """
-    from octop_browser.cdp.launcher import _find_playwright_chromium  # noqa: PLC0415
-
     return _find_playwright_chromium()
 
 
