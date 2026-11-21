@@ -13,6 +13,107 @@
 - 改进 CLI 帮助信息：新增 `--version`、顶层使用示例和子命令帮助提示，并明确 `install-browser` 中 Playwright 仅用于 Chromium 下载引导。
 
 
+## [1.0.3] - 2026-11-21
+
+本版全部是**新增能力**，公开 API 只做加法：`BrowserSession.create()` 多了关键字
+参数、`capture.screenshot()` 多了两个关键字参数，其余签名不变，既有调用不需要改。
+面向的场景只有一个：单人自托管跑自动化时，重复任务不再反复冷启动、等待失败时
+不用猜页面到底出了什么事、产物不会把磁盘写爆。
+
+### 新增：会话池（`SessionPool`）
+
+- `happyclaw_browser.pool.SessionPool`：按 profile 复用活着的浏览器会话，冷启动从
+  "每次任务一次" 变成 "每个 profile 一次"。`browser_tool()` 现在走这把池子，
+  调用方代码不变。
+- 上限 `BROWSER_USE_POOL_MAX_SESSIONS`（默认 4）。池满时新的 profile **排队等待**，
+  不报错；只有显式设置 `BROWSER_USE_POOL_ACQUIRE_TIMEOUT` 才会在超时后抛
+  `PoolExhaustedError`，消息里带 live/inflight/max 计数与调参提示。
+- 空闲回收：`BROWSER_USE_IDLE_TIMEOUT_MINUTES` 生效于池级别（会话无租约且超时），
+  回收时 `close(kill=True)`，把 Chrome 真正杀掉——只断连会占着 profile 锁和调试端口，
+  让下次启动直接失败。
+- 崩溃自愈：取用会话前检查 `BrowserSession.is_alive`，浏览器已死的会话就地丢弃并重建，
+  不再把一个已经断开的会话交给调用方、让调用方在下一个动作上失败。
+- 池内新建会话是**串行**的：同一台机器上并发冷启动只会让每一个都更慢，还会抢同一个调试端口。
+- 新增动作：`session_info`（报告会话是否存活、实际使用的 CDP 端口，不会启动浏览器）、
+  `pool_status`（live / queued / reclaimed / rebuilt 计数），CLI 对应
+  `session-info` / `pool-status`，MCP 对应 `browser_session_info` / `browser_pool_status`。
+- 池管理的会话不再启动单会话 idle 看门狗（`enable_idle_reaper=False`），避免两个看门狗
+  抢同一个浏览器；直接使用 `BrowserSession` 的用户行为不变。
+
+### 新增：等待原语（`waits`）
+
+- `BrowserSession.wait_for_selector(selector, timeout_ms, state)`、
+  `wait_for_navigation(url_contains, timeout_ms)`、
+  `wait_for_network_idle(idle_ms, timeout_ms)`，CLI 为 `wait-selector` /
+  `wait-navigation` / `wait-network-idle`，MCP 同名工具。
+- 超时不再只给一句 `Timeout waiting for condition`：`metadata["wait"]` 里带
+  `url` / `title` / `ready_state` / `interactive_elements` / `selector_matches` /
+  `selector_visible` / `pending_requests` / `pending_urls` / `screenshot`，外加一句
+  `hint` 指出最可能的原因（页面还在加载、页面没有可交互元素、选择器没匹配到、
+  元素匹配到但不可见、请求一直没停）。`error` 仍然是一行可读摘要。
+- 超时默认落一张截图到 `screenshots_dir`（`screenshot_on_timeout=False` 可关），
+  因为"按钮被 cookie 横幅挡住了"这类问题，一张图就说明白。
+- 轮询退避 20ms 起、250ms 封顶；`wait_for_network_idle` 统计真实在途请求，
+  超时报告会点名卡住的请求（通常是分析/埋点域名从这台机器不可达）。
+- `wait_for_navigation` 成功时会作废 ref 缓存，避免把导航前的 nodeId 交给调用方。
+
+### 新增：统一产物 API（`artifacts`）
+
+- `BrowserSession.artifact(kind="screenshot"|"pdf"|"dom", ...)`：一次调用拿截图、
+  print-to-PDF 或 DOM 快照，返回 `ArtifactRef`（`kind`/`path`/`format`/`size_bytes`/
+  `max_bytes`/`url`/`title`/尺寸），`content` 是文件路径——不再把 base64 塞给调用方。
+- 路径规范：`<artifacts_dir>/<kind>/happyclaw-<kind>-<UTC 时间戳>-<序号>.<ext>`，
+  `artifacts_dir` 默认 `~/.happyclaw-browser/artifacts`（`BROWSER_USE_ARTIFACTS_DIR` 可改）。
+- 体积上限 `BROWSER_USE_ARTIFACT_MAX_BYTES`（默认 16 MiB）：超限的产物**不写盘**并回报真实
+  字节数；截图超限时先降级成 JPEG（quality 60）重试一次，仍超限才拒绝。旧版
+  `screenshot()` 行为不变（仍写 `screenshots_dir`、无上限），新 API 才带天花板。
+- `capture.screenshot()` 新增关键字参数 `image_format` / `quality`（默认值保持 PNG 行为）。
+
+### 新增：调试端口自动避让
+
+- 分配端口前真的去 bind 一下：`BROWSER_USE_CDP_PORT_START` 只表示扫描起点，
+  被别的进程（另一个线程的 Chrome、残留浏览器、无关服务）占用就顺延，
+  扫描窗口 `BROWSER_USE_CDP_PORT_SCAN`（默认 200）。窗口耗尽时抛
+  `RuntimeError` 并说明该改哪个环境变量。
+- 启动前再检查一次：若端口被非 CDP 进程占用（`/json/version` 不应答），
+  启动器把该 profile 挪到空闲端口并持久化新映射，日志说明换了哪个端口。
+  这解决了"profile 建好了、端口后来被别人抢走"的场景。
+- 回报**实际**端口：`Profile.cdp_port` 不再等于"环境变量 + 序号"，
+  `session_info` 与 `BrowserSession.cdp_port` 给出真实值。
+
+### 修复：启动失败不再留下半初始化的 profile
+
+- Chrome 在绑定端口前死掉（缺库、沙箱拒绝、无桌面会话）会留下 `Local State`、
+  `SingletonLock` 和半个 profile，下一次启动直接 exit 21，用户看到同一个错两次。
+  现在失败路径会清 pid，并且：**从未成功启动过**的 profile 整个删掉，
+  **已经有登录态**的 profile 只清锁文件。测试用"假 Chrome"（会立刻退出的解释器）
+  驱动真实失败路径。
+
+### 变更：de-octop（上游标识全量清理）
+
+- 状态目录 `~/.octop-browser`（以及更早的 `~/.harness-browser`）现在**一次性复制**到
+  `~/.happyclaw-browser`，profile、cookie、录制一并带过去，并打印一条迁移说明；
+  旧目录原样保留供用户自行删除。复制失败（浏览器占着 profile 锁、权限问题）时继续使用
+  旧目录并警告，**绝不从空目录开始**——那看起来就是"升级后所有登录都没了"。
+  1.0.2 的行为只是"沿用旧目录并提示"，用户还得自己搬；现在不用了。
+  复制先落到 `<新目录>.migrating` 再原子改名，中途中断不会留下一个看起来完整的半成品目录。
+- 代码中剩余的 octop 字样只保留**只读兼容**，删除会让老用户丢端口映射或登录态：
+  `OCTOP_SKIP_PLAYWRIGHT_PIP` / `OCTOP_MULTI_PIP_BOOTSTRAP`（新名优先，旧名仍认并抛
+  `DeprecationWarning`）、`.octop-browser-profiles.json` / `.octop-browser-target.json` /
+  `.octop-browser-chrome.pid` 三个旧状态文件名（只在读时回退，写入一律 `.happyclaw-browser-*`）。
+- README / README_CN 同步改写迁移说明，并补齐本轮新增的 5 个环境变量
+  （`BROWSER_USE_CDP_PORT_SCAN`、`BROWSER_USE_POOL_MAX_SESSIONS`、
+  `BROWSER_USE_POOL_ACQUIRE_TIMEOUT`、`BROWSER_USE_ARTIFACTS_DIR`、
+  `BROWSER_USE_ARTIFACT_MAX_BYTES`）。
+
+### 兼容性
+
+- 无破坏性变更。`BrowserSession.create()`、`capture.screenshot()` 只是多了带默认值的
+  关键字参数；`tool_interface._registry` 仍是"profile → 会话"的字典，只是底层换成池的存储。
+- 端口分配语义变了：以前固定 `cdp_port_start + index`，现在跳过被占用的端口。
+  依赖"端口必须是 9222"的脚本要改成读 `session_info` / `BrowserSession.cdp_port`。
+
+
 ## [1.0.2] - 2026-11-21
 
 本版把命名从 Octop 全量切换到 HappyClaw。**这是一个 breaking release**：

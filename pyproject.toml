@@ -7,7 +7,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "happyclaw-browser"
-version = "1.0.2"
+version = "1.0.3"
 description = "AI-friendly browser automation via CDP with profile-based login persistence"
 readme = "README.md"
 license = { text = "MIT" }
