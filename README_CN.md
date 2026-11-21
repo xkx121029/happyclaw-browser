@@ -339,8 +339,11 @@ settings = HappyclawSettings(cdp_port_start=9300, cdp_timeout=60.0)
 session = await BrowserSession.create(profile="work", settings=settings)
 ```
 
-配置与数据默认放在 `~/.happyclaw-browser/`。若旧版留下的 `~/.octop-browser/` 还在，
-会原样沿用并在启动时提示一次——把它移到新路径即可完成切换。
+配置与数据默认放在 `~/.happyclaw-browser/`。升级后首次启动时，旧版留下的
+`~/.octop-browser/`（或更早的 `~/.harness-browser/`）会被**复制**到新路径，
+profile、登录 cookie 与录制一并带过去，并打印一条迁移说明。旧目录原样保留，
+确认新位置可用后自行删除。若复制失败（例如浏览器还占着 profile 锁），会继续使用
+旧目录而不是从空目录开始——登录态一次都不会丢。
 
 | 变量 | 默认值 | 作用 |
 |------|--------|------|
@@ -350,7 +353,12 @@ session = await BrowserSession.create(profile="work", settings=settings)
 | `BROWSER_USE_PROFILES_DIR` | `~/.happyclaw-browser/profiles` | Chrome user-data-dir 的根目录 |
 | `BROWSER_USE_SCREENSHOTS_DIR` | `~/.happyclaw-browser/screenshots` | `screenshot` 动作写入 PNG 的目录 |
 | `BROWSER_USE_CDP_HOST` | `localhost` | 提供 CDP 端点的主机 |
-| `BROWSER_USE_CDP_PORT_START` | `9222` | 分配给 profile 的起始 CDP 调试端口 |
+| `BROWSER_USE_CDP_PORT_START` | `9222` | 为 profile 探测 CDP 调试端口的起点——被别的进程占用的端口会跳过 |
+| `BROWSER_USE_CDP_PORT_SCAN` | `200` | 起点端口被占用时，往后连续探测多少个端口 |
+| `BROWSER_USE_POOL_MAX_SESSIONS` | `4` | 会话池同时保有的浏览器数量；超出时新 profile 排队而不是报错 |
+| `BROWSER_USE_POOL_ACQUIRE_TIMEOUT` | `0` | 取用会话时等待空位的秒数，超时抛错（0 表示一直等） |
+| `BROWSER_USE_ARTIFACTS_DIR` | `~/.happyclaw-browser/artifacts` | 产物 API 的根目录，按 kind 分子目录 |
+| `BROWSER_USE_ARTIFACT_MAX_BYTES` | `16777216` | 单个产物的体积上限；超过则不写盘并回报真实大小 |
 | `BROWSER_USE_CDP_TIMEOUT` | `30.0` | 等待 CDP 命令响应的秒数 |
 | `BROWSER_USE_VIEWPORT_WIDTH` | `1440` | 视口宽度（CSS 像素） |
 | `BROWSER_USE_VIEWPORT_HEIGHT` | `900` | 视口高度（CSS 像素） |

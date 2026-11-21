@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import importlib
 import warnings
 from pathlib import Path
 
@@ -40,43 +39,59 @@ def test_state_dir_prefers_new_name_for_fresh_installs(monkeypatch, tmp_path):
     assert state_dir() == tmp_path / ".happyclaw-browser"
 
 
-def test_state_dir_keeps_using_legacy_dir_when_present(monkeypatch, tmp_path):
-    """An earlier release's state dir holds login cookies: keep using it."""
-    from happyclaw_browser.settings import _LEGACY_STATE_DIRS
+def test_state_dir_migrates_a_legacy_dir_instead_of_reusing_it(monkeypatch, tmp_path):
+    """An earlier release's state dir holds login cookies: copy it across."""
+    from happyclaw_browser.settings import (
+        _LEGACY_STATE_DIRS,
+        reset_state_dir_migration,
+    )
 
     legacy = tmp_path / _LEGACY_STATE_DIRS[0]
-    legacy.mkdir()
+    (legacy / "profiles" / "work").mkdir(parents=True)
+    (legacy / "profiles" / "work" / "Cookies").write_text("session", encoding="utf-8")
     monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
-    with pytest.warns(UserWarning, match="Move it to"):
-        assert state_dir() == legacy
-    assert HappyclawSettings().profiles_dir == legacy / "profiles"
+    reset_state_dir_migration()
+
+    with pytest.warns(UserWarning, match="copied the state directory"):
+        assert state_dir() == tmp_path / ".happyclaw-browser"
+    assert (tmp_path / ".happyclaw-browser" / "profiles" / "work" / "Cookies").exists()
+    assert legacy.is_dir(), "the old directory stays until the user deletes it"
+    assert HappyclawSettings().profiles_dir == (
+        tmp_path / ".happyclaw-browser" / "profiles"
+    )
 
 
 def test_state_dir_falls_back_through_every_legacy_name(monkeypatch, tmp_path):
-    from happyclaw_browser.settings import _LEGACY_STATE_DIRS
+    from happyclaw_browser.settings import (
+        _LEGACY_STATE_DIRS,
+        reset_state_dir_migration,
+    )
 
     oldest = tmp_path / _LEGACY_STATE_DIRS[-1]
-    oldest.mkdir()
+    (oldest / "profiles").mkdir(parents=True)
     monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
-    with pytest.warns(UserWarning, match="Move it to"):
-        assert state_dir() == oldest
+    reset_state_dir_migration()
+
+    with pytest.warns(UserWarning, match="copied the state directory"):
+        assert state_dir() == tmp_path / ".happyclaw-browser"
+    assert (tmp_path / ".happyclaw-browser" / "profiles").is_dir()
 
 
 def test_state_dir_migration_warns_once_per_process(monkeypatch, tmp_path):
-    from happyclaw_browser.settings import _LEGACY_STATE_DIRS
+    from happyclaw_browser.settings import (
+        _LEGACY_STATE_DIRS,
+        reset_state_dir_migration,
+    )
 
     legacy = tmp_path / _LEGACY_STATE_DIRS[0]
     legacy.mkdir()
     monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
-    monkeypatch.setattr(
-        importlib.import_module("happyclaw_browser.settings"),
-        "_hinted_state_dirs",
-        set(),
-    )
+    reset_state_dir_migration()
+
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always", UserWarning)
         for _ in range(3):
-            assert state_dir() == legacy
+            assert state_dir() == tmp_path / ".happyclaw-browser"
     assert len([w for w in caught if issubclass(w.category, UserWarning)]) == 1
 
 

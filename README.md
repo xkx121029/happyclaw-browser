@@ -345,9 +345,13 @@ settings = HappyclawSettings(cdp_port_start=9300, cdp_timeout=60.0)
 session = await BrowserSession.create(profile="work", settings=settings)
 ```
 
-State lives in `~/.happyclaw-browser/`. A `~/.octop-browser/` left behind by an
-earlier release is reused as-is and reported once at startup — move it to the
-new path to finish the switch.
+State lives in `~/.happyclaw-browser/`. On the first start after an upgrade, a
+`~/.octop-browser/` (or `~/.harness-browser/`) left by an earlier release is
+**copied** to the new path — profiles, cookies and recordings included — and a
+one-line notice says so. The old directory is left in place; delete it once the
+new location is proven to work. If the copy fails (a browser still holding a
+profile lock), the old directory keeps being used instead of starting empty,
+so no login is ever lost.
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
@@ -357,7 +361,12 @@ new path to finish the switch.
 | `BROWSER_USE_PROFILES_DIR` | `~/.happyclaw-browser/profiles` | Base directory for Chrome user-data-dirs |
 | `BROWSER_USE_SCREENSHOTS_DIR` | `~/.happyclaw-browser/screenshots` | Where the `screenshot` action writes PNGs |
 | `BROWSER_USE_CDP_HOST` | `localhost` | Host serving Chrome's CDP endpoint |
-| `BROWSER_USE_CDP_PORT_START` | `9222` | First CDP debug port assigned to profiles |
+| `BROWSER_USE_CDP_PORT_START` | `9222` | First CDP debug port probed for a profile — ports another process owns are skipped |
+| `BROWSER_USE_CDP_PORT_SCAN` | `200` | How many consecutive ports to probe when the assigned one is taken |
+| `BROWSER_USE_POOL_MAX_SESSIONS` | `4` | Live browser sessions the pool keeps; further profiles queue instead of failing |
+| `BROWSER_USE_POOL_ACQUIRE_TIMEOUT` | `0` | Seconds an acquisition may wait for a free slot before raising (0 waits forever) |
+| `BROWSER_USE_ARTIFACTS_DIR` | `~/.happyclaw-browser/artifacts` | Base directory for the artifact API, one subdirectory per kind |
+| `BROWSER_USE_ARTIFACT_MAX_BYTES` | `16777216` | Hard ceiling for one artifact; larger captures are refused, not written |
 | `BROWSER_USE_CDP_TIMEOUT` | `30.0` | Seconds to wait for a CDP command response |
 | `BROWSER_USE_VIEWPORT_WIDTH` | `1440` | Viewport width in CSS pixels |
 | `BROWSER_USE_VIEWPORT_HEIGHT` | `900` | Viewport height in CSS pixels |

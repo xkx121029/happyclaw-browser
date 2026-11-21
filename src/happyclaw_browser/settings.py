@@ -57,6 +57,7 @@ Environment variables (all optional):
 from __future__ import annotations
 
 import os
+import shutil
 import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -69,24 +70,36 @@ def _env_path(key: str, default: Path) -> Path:
     return Path(val) if val else default
 
 
-#: State directory under ``$HOME``. New installs use ``.happyclaw-browser``; a
-#: directory left behind by an earlier release is reused instead of orphaning
-#: the login cookies and recordings inside it, and the user is told where the
-#: new location is so they can move it themselves.
+#: State directory under ``$HOME``. New installs use ``.happyclaw-browser``.
+#: A directory left behind by an earlier release is copied into the new
+#: location once, so the login cookies and recordings inside it come along
+#: instead of being orphaned behind a name nobody looks at any more.
 _STATE_DIR = ".happyclaw-browser"
 _LEGACY_STATE_DIRS = (".octop-browser", ".harness-browser")
 
-#: Legacy directories already reported in this process.
-_hinted_state_dirs: set[Path] = set()
+#: Legacy directories already migrated in this process.
+_migrated_state_dirs: set[Path] = set()
+
+#: Where a migration-in-progress is assembled before it replaces the live
+#: directory, so an interrupted copy never leaves a half-populated state dir
+#: that the next run would happily treat as complete.
+_MIGRATING_SUFFIX = ".migrating"
 
 
 def state_dir() -> Path:
     """Return the base directory holding profiles, screenshots and recordings.
 
     Fresh installs use ``~/.happyclaw-browser``. When that path does not exist
-    but a state directory from an earlier release is present, that one is
-    reused so existing Chrome profiles (cookies) and recordings stay attached,
-    and a one-line note points at the new path. Nothing is moved on disk.
+    but a state directory from an earlier release is present, its contents are
+    **copied** across once and a one-line notice says so. The copy is
+    deliberate rather than a move: durable data the user already has (cookies,
+    recordings) must survive a migration that is interrupted, and the old
+    directory is left in place for the user to delete once the new one is
+    proven to work.
+
+    If the copy fails — a profile locked by a running browser, a permission
+    problem — the old directory keeps being used, with a warning saying so.
+    Starting from an empty directory would look like every login was lost.
     """
     home = Path.home()
     current = home / _STATE_DIR
@@ -94,24 +107,49 @@ def state_dir() -> Path:
         return current
     for name in _LEGACY_STATE_DIRS:
         legacy = home / name
-        if legacy.exists():
-            _hint_legacy_state_dir(legacy, current)
-            return legacy
+        if legacy.is_dir():
+            return current if _migrate_state_dir(legacy, current) else legacy
     return current
 
 
-def _hint_legacy_state_dir(legacy: Path, current: Path) -> None:
-    """Report a reused legacy state directory once per process."""
-    if legacy in _hinted_state_dirs:
-        return
-    _hinted_state_dirs.add(legacy)
+def _migrate_state_dir(legacy: Path, current: Path) -> bool:
+    """Copy *legacy* to *current* once; return True when *current* is usable."""
+    if legacy in _migrated_state_dirs:
+        return current.is_dir()
+    _migrated_state_dirs.add(legacy)
+    staging = current.with_name(current.name + _MIGRATING_SUFFIX)
+    try:
+        if staging.exists():
+            shutil.rmtree(staging)
+        shutil.copytree(legacy, staging)
+        staging.rename(current)
+    except OSError as exc:
+        shutil.rmtree(staging, ignore_errors=True)
+        warnings.warn(
+            f"happyclaw-browser could not copy the state directory {legacy} to "
+            f"{current} ({exc}); continuing to use {legacy}. Retry the copy "
+            "once no browser is running.",
+            UserWarning,
+            stacklevel=3,
+        )
+        return False
     warnings.warn(
-        f"happyclaw-browser is reusing the state directory {legacy} left by an "
-        f"earlier release. Move it to {current} to adopt the new location; "
-        "nothing was changed on disk.",
+        f"happyclaw-browser copied the state directory left by an earlier "
+        f"release from {legacy} to {current}. Profiles, screenshots and "
+        f"recordings now live there; delete {legacy} once the new location "
+        "works for you.",
         UserWarning,
-        stacklevel=2,
+        stacklevel=3,
     )
+    return True
+
+
+def reset_state_dir_migration() -> None:
+    """Forget which legacy directories were already migrated in this process.
+
+    Only useful in tests: a process normally migrates exactly once.
+    """
+    _migrated_state_dirs.clear()
 
 
 def _env_float(key: str, default: float) -> float:
@@ -183,6 +221,20 @@ class HappyclawSettings:
     )
     idle_timeout_minutes: float = field(
         default_factory=lambda: _env_float("BROWSER_USE_IDLE_TIMEOUT_MINUTES", 0.0)
+    )
+    artifact_max_bytes: int = field(
+        default_factory=lambda: _env_int(
+            "BROWSER_USE_ARTIFACT_MAX_BYTES", 16 * 1024 * 1024
+        )
+    )
+    pool_max_sessions: int = field(
+        default_factory=lambda: _env_int("BROWSER_USE_POOL_MAX_SESSIONS", 4)
+    )
+    pool_acquire_timeout: float = field(
+        default_factory=lambda: _env_float("BROWSER_USE_POOL_ACQUIRE_TIMEOUT", 0.0)
+    )
+    cdp_port_scan_limit: int = field(
+        default_factory=lambda: _env_int("BROWSER_USE_CDP_PORT_SCAN", 200)
     )
     viewport_width: int = field(
         default_factory=lambda: _env_int("BROWSER_USE_VIEWPORT_WIDTH", 1440)
