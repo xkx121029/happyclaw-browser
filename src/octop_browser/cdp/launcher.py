@@ -348,6 +348,21 @@ def _user_namespaces_available() -> bool:
     return _USER_NS_CACHE
 
 
+#: First interval used by :func:`_get_ws_url`'s poll loop. Chrome usually
+#: binds its CDP port within a few dozen milliseconds of exec, so starting a
+#: poll this tight lets us notice it almost immediately while the geometric
+#: growth below keeps the *total* wait budget equal to the configured
+#: ``launch_retries * launch_delay``.
+_POLL_START_DELAY = 0.01
+
+
+def _grow_poll_delay(current: float, ceiling: float) -> float:
+    """Return the next poll interval, doubling up to *ceiling*."""
+    if ceiling <= 0:
+        return 0.0
+    return min(max(current, _POLL_START_DELAY) * 2, ceiling)
+
+
 async def _get_ws_url(
     port: int,
     retries: int | None = None,
@@ -362,35 +377,43 @@ async def _get_ws_url(
     each iteration; if Chrome has already exited (e.g. missing libraries,
     sandbox crash, no DISPLAY) we raise immediately with the captured
     ``stderr_file`` tail instead of waiting for the full retry budget.
+
+    The poll interval starts tight and doubles up to ``delay``, so a browser
+    that is ready in tens of milliseconds is picked up in tens of
+    milliseconds instead of on the next ``delay``-wide tick. One
+    :class:`aiohttp.ClientSession` is reused for every attempt: building a
+    fresh session per attempt re-runs host resolution and allocates a new
+    connector, which on Windows costs more than the probe itself.
     """
     from octop_browser.settings import settings as _settings
 
     _retries = retries if retries is not None else _settings.launch_retries
     _delay = delay if delay is not None else _settings.launch_delay
     url = f"http://{_settings.cdp_host}:{port}/json/version"
-    for attempt in range(_retries):
-        # Fast-fail: Chrome subprocess already exited. Surface its stderr so
-        # callers see the real cause (missing libs, --no-sandbox needed, …)
-        # rather than a generic "did not start after N attempts" timeout.
-        if process is not None and process.poll() is not None:
-            tail = _tail_stderr(stderr_file)
-            detail = f"\nChrome stderr (tail):\n{tail}" if tail else ""
-            raise RuntimeError(
-                f"Chrome exited immediately (returncode={process.returncode}) "
-                f"before binding to {_settings.cdp_host}:{port}.{detail}"
-            )
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    url, timeout=aiohttp.ClientTimeout(total=2)
-                ) as resp:
+    probe_timeout = aiohttp.ClientTimeout(total=2)
+    interval = min(_delay, _POLL_START_DELAY)
+    async with aiohttp.ClientSession() as session:
+        for attempt in range(_retries):
+            # Fast-fail: Chrome subprocess already exited. Surface its stderr so
+            # callers see the real cause (missing libs, --no-sandbox needed, …)
+            # rather than a generic "did not start after N attempts" timeout.
+            if process is not None and process.poll() is not None:
+                tail = _tail_stderr(stderr_file)
+                detail = f"\nChrome stderr (tail):\n{tail}" if tail else ""
+                raise RuntimeError(
+                    f"Chrome exited immediately (returncode={process.returncode}) "
+                    f"before binding to {_settings.cdp_host}:{port}.{detail}"
+                )
+            try:
+                async with session.get(url, timeout=probe_timeout) as resp:
                     data = await resp.json(content_type=None)
                     ws_url: str = data["webSocketDebuggerUrl"]
                     logger.debug("Chrome ready at %s", ws_url)
                     return ws_url
-        except Exception:  # noqa: BLE001  # pylint: disable=broad-except
-            if attempt < _retries - 1:
-                await asyncio.sleep(_delay)
+            except Exception:  # noqa: BLE001  # pylint: disable=broad-except
+                if attempt < _retries - 1:
+                    await asyncio.sleep(interval)
+                    interval = _grow_poll_delay(interval, _delay)
     tail = _tail_stderr(stderr_file)
     detail = f"\nChrome stderr (tail):\n{tail}" if tail else ""
     raise RuntimeError(

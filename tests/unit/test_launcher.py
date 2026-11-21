@@ -673,3 +673,99 @@ async def test_get_page_ws_url_works_without_profile(monkeypatch):
         ],
     )
     assert await get_page_ws_url(9222) == "ws://any"
+
+
+# ---------------------------------------------------------------------------
+# Launch polling: adaptive interval + one HTTP session per wait
+# ---------------------------------------------------------------------------
+
+
+def test_grow_poll_delay_doubles_then_holds_at_ceiling():
+    from octop_browser.cdp.launcher import _POLL_START_DELAY, _grow_poll_delay
+
+    assert _grow_poll_delay(_POLL_START_DELAY, 0.25) == 0.02
+    assert _grow_poll_delay(0.16, 0.25) == 0.25
+    assert _grow_poll_delay(0.25, 0.25) == 0.25
+
+
+def test_grow_poll_delay_without_ceiling_stays_zero():
+    """``BROWSER_USE_LAUNCH_DELAY=0`` must still mean "poll as fast as possible"."""
+    from octop_browser.cdp.launcher import _grow_poll_delay
+
+    assert _grow_poll_delay(0.01, 0.0) == 0.0
+
+
+def _session_factory(sessions: list, fail_first: int):
+    """A fake ClientSession whose first *fail_first* probes are refused."""
+
+    class _Resp:
+        def __init__(self, payload):
+            self._payload = payload
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+        async def json(self, content_type=None):
+            return self._payload
+
+    class _Session:
+        def __init__(self):
+            self.attempts = 0
+            sessions.append(self)
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+        def get(self, _url, timeout=None):
+            self.attempts += 1
+            if self.attempts <= fail_first:
+                raise ConnectionRefusedError("CDP port not bound yet")
+            return _Resp({"webSocketDebuggerUrl": "ws://ready"})
+
+    return _Session
+
+
+async def test_get_ws_url_backs_off_geometrically_and_reuses_one_session(
+    monkeypatch,
+):
+    """A port that binds late is found on the first tight tick, not a full
+    ``launch_delay`` later, and the whole wait costs one ClientSession."""
+    from octop_browser.cdp import launcher as _l
+
+    sessions: list = []
+    monkeypatch.setattr(_l.aiohttp, "ClientSession", _session_factory(sessions, 2))
+    sleeps: list[float] = []
+
+    async def fake_sleep(delay: float) -> None:
+        sleeps.append(delay)
+
+    monkeypatch.setattr(_l.asyncio, "sleep", fake_sleep)
+
+    ws = await _l._get_ws_url(port=19999, retries=5, delay=0.25)
+
+    assert ws == "ws://ready"
+    assert sleeps == [0.01, 0.02], "interval must double, not sit at the ceiling"
+    assert len(sessions) == 1, "each retry must reuse the same session"
+
+
+async def test_get_ws_url_still_exhausts_retries_and_reports(monkeypatch):
+    """Every probe refused → the RuntimeError still names the port."""
+    from octop_browser.cdp import launcher as _l
+
+    sessions: list = []
+    monkeypatch.setattr(_l.aiohttp, "ClientSession", _session_factory(sessions, 99))
+
+    async def fake_sleep(_delay: float) -> None:
+        return None
+
+    monkeypatch.setattr(_l.asyncio, "sleep", fake_sleep)
+
+    with pytest.raises(RuntimeError, match="did not start"):
+        await _l._get_ws_url(port=19998, retries=3, delay=0.25)
+    assert sessions[0].attempts == 3
