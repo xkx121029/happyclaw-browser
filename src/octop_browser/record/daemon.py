@@ -145,9 +145,21 @@ async def send_request(request: dict[str, Any], timeout: float = 5.0) -> dict[st
     ``[Errno 2] No such file or directory`` from the unix socket, so CLI and
     MCP callers can surface an actionable message.
     """
+    open_unix = getattr(asyncio, "open_unix_connection", None)
+    if open_unix is None:
+        # Windows has no AF_UNIX stream support in asyncio; saying so beats
+        # an AttributeError from the loop below.
+        return {
+            "ok": False,
+            "error": (
+                "Record daemon is unavailable: this platform provides no Unix "
+                "domain sockets, so `octop-browser record daemon-start` cannot "
+                "run here. Drive RecordController in-process instead."
+            ),
+        }
     try:
         reader, writer = await asyncio.wait_for(
-            asyncio.open_unix_connection(str(socket_path())), timeout=timeout
+            open_unix(str(socket_path())), timeout=timeout
         )
     except (OSError, asyncio.TimeoutError):
         return {
