@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from typing import Any
 
 import pytest
@@ -13,6 +14,16 @@ from octop_browser.install import (
     install_chromium_stream,
 )
 from octop_browser.playwright_download import DownloadCandidate
+
+# The OS-library step is Linux-only (apt/dnf/yum + os.geteuid); these tests
+# exercise it and cannot mean anything on macOS/Windows.
+linux_only = pytest.mark.skipif(
+    not sys.platform.startswith("linux"),
+    reason=(
+        "exercises the Linux package-manager branch of build_install_steps; "
+        "no equivalent path exists off Linux. Platform matrix: reports/BROWSER.md."
+    ),
+)
 
 
 @pytest.fixture(autouse=True)
@@ -198,6 +209,7 @@ def test_ensure_chromium_handles_missing_python(monkeypatch):
     assert ensure_chromium(quiet=True) is False
 
 
+@linux_only
 def test_run_install_deps_uses_dnf_when_no_apt(monkeypatch):
     """Sync installer must not invoke playwright install-deps on RPM hosts."""
     monkeypatch.setattr(install_mod.sys, "platform", "linux")
@@ -229,6 +241,7 @@ def test_run_install_deps_uses_dnf_when_no_apt(monkeypatch):
     assert "--skip-unavailable" not in calls[1]
 
 
+@linux_only
 def test_run_install_deps_ignores_font_failure(monkeypatch):
     """CJK fonts are best-effort; a missing font package must not fail deps."""
     monkeypatch.setattr(install_mod.sys, "platform", "linux")
@@ -252,6 +265,7 @@ def test_run_install_deps_ignores_font_failure(monkeypatch):
     assert install_mod._run_install_deps(quiet=True) is True
 
 
+@linux_only
 def test_run_install_deps_apt_runs_fonts_after_playwright(monkeypatch):
     """Playwright install-deps success must still try CJK fonts."""
     monkeypatch.setattr(install_mod.sys, "platform", "linux")
@@ -424,6 +438,7 @@ async def test_install_stream_falls_back_to_next_source(monkeypatch):
 
 
 @pytest.mark.asyncio
+@linux_only
 async def test_install_stream_uses_dnf_when_apt_missing(monkeypatch):
     """On RPM hosts, skip playwright install-deps (it only knows apt-get)."""
     monkeypatch.setattr(install_mod.sys, "platform", "linux")
@@ -458,6 +473,7 @@ async def test_install_stream_uses_dnf_when_apt_missing(monkeypatch):
 
 
 @pytest.mark.asyncio
+@linux_only
 async def test_install_stream_native_hint_when_deps_fail(monkeypatch):
     """Failed system-deps must not claim 'elevated privileges' on dnf hosts."""
     monkeypatch.setattr(install_mod.sys, "platform", "linux")

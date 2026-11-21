@@ -41,6 +41,8 @@ def test_relative_path_resolves_under_screenshots_dir(tmp_path: Path):
 
 def test_user_home_is_expanded(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("HOME", str(tmp_path))
+    # Windows resolves ``~`` from USERPROFILE, POSIX from HOME.
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
     p = _resolve_path("~/myshot.png", _cfg(tmp_path / "ignored"))
     # ~ is expanded *before* the relative-path branch; an absolute path
     # then bypasses screenshots_dir entirely.

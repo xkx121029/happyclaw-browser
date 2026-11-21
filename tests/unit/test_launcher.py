@@ -69,6 +69,8 @@ def test_find_playwright_chromium_returns_none_when_missing(monkeypatch, tmp_pat
     monkeypatch.setenv("PLAYWRIGHT_BROWSERS_PATH", str(tmp_path / "empty"))
     # Also redirect HOME so the default ~/.cache/ms-playwright is empty too.
     monkeypatch.setenv("HOME", str(tmp_path))
+    # Windows reads LOCALAPPDATA instead of HOME for the default cache root.
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
     # On macOS the default uses ~/Library/Caches; redirect via HOME above.
     assert _find_playwright_chromium() is None
 

@@ -2,11 +2,24 @@
 
 from __future__ import annotations
 
+import sys
+
+import pytest
+
 from octop_browser.linux_deps import (
     build_install_steps,
     detect_package_manager,
     manual_hint,
     with_privileges,
+)
+
+pytestmark = pytest.mark.skipif(
+    not sys.platform.startswith("linux"),
+    reason=(
+        "linux_deps only drives apt/dnf/yum/zypper/pacman/apk and reads "
+        "os.geteuid(), none of which exist off Linux; there is no non-Linux "
+        "branch to assert. Platform matrix: reports/BROWSER.md."
+    ),
 )
 
 
