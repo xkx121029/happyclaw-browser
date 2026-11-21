@@ -9,9 +9,74 @@
 
 ### 变更
 
-- 对齐 Octop：引入 `develop` 集成分支策略；禁止直推 `main`/`develop`；发版后由 `sync-main-to-develop.yml` 同步；新增 `/publish` skill（发版同步 CHANGELOG / README）。
+- 对齐 HappyClaw 主仓的分支策略：引入 `develop` 集成分支策略；禁止直推 `main`/`develop`；发版后由 `sync-main-to-develop.yml` 同步；新增 `/publish` skill（发版同步 CHANGELOG / README）。
 - 改进 CLI 帮助信息：新增 `--version`、顶层使用示例和子命令帮助提示，并明确 `install-browser` 中 Playwright 仅用于 Chromium 下载引导。
 
+
+## [1.0.1] - 2026-11-21
+
+本版把本库纳入 HappyClaw 自维护体系，并修掉若干在 Windows 上会直接影响
+可用性的缺陷。
+
+### 修复
+
+- **`close_session --kill` 在 Windows 上不生效**。优雅关闭（CDP
+  `Browser.close`）超时后的唯一兜底 `pkill_chrome_profile` 在非 POSIX 平台
+  直接返回 `False`，于是浏览器进程从未被停止：user-data-dir 被占、CDP 端口
+  被占，之后同一 profile 的每次启动都以
+  `Chrome exited immediately (returncode=0)` 失败。现在启动时记录本库自己
+  spawn 的 Chrome pid（`.octop-browser-chrome.pid`），优雅关闭失败后用
+  `taskkill /T`（Windows）或 `killpg`（POSIX）终止，并在成功后清除记录。
+- **录制守护进程在 Windows 上抛出 `AttributeError`**。`send_request` 直接调用
+  `asyncio.open_unix_connection`，该属性在 Windows 不存在且不在原有
+  `except` 覆盖范围内，调用方看到的是裸 AttributeError 而不是「守护进程未运行」
+  的可操作提示；服务端 `run()` 同样问题。两处都改为先探测能力再给出明确说明。
+- **`mcp` 依赖约束与代码自相矛盾**。`pyproject.toml` 写 `mcp>=1.9,<3`，而同段
+  注释与 `mcp_server.py` 的实现都要求 `<2`（2.x 移除了导入期注册的
+  `Server.list_tools()` / `call_tool()`）。干净安装会解析到 2.x 并让 MCP 接口
+  整体不可用。约束改为 `mcp>=1.9,<2`。
+- **沙箱探测未防护 `os.getuid`**。`_should_disable_sandbox()` 在 Linux 分支裸调
+  该函数，与同模块 `launch_prep.py` 的写法不一致，非 POSIX 环境下抛
+  AttributeError。
+- **启动失败会留下孤儿 Chrome**。`launch_or_attach` 只在「exit 21 / 单例」这一
+  个分支回收子进程，其它异常（包括任务取消）逃出时子进程无人持有句柄。
+- **CDP 关闭不释放等待者**。`close()` 之后仍挂起的命令要等满 `cdp_timeout`
+  （默认 30 s）才返回；被取消的命令会永久留下一条 pending 记录；事件监听器返回
+  的协程没有任何引用，可能在执行中途被回收。
+
+### 性能
+
+同一台机器、同一脚本（`scripts/bench_hot_paths.py`）前后对比：
+
+| 指标 | 1.0.0 | 1.0.1 |
+| --- | --- | --- |
+| 等待 Chrome 绑定端口的轮询间隔 | `[0.25, 0.25, 0.25]` s | `[0.01, 0.02, 0.04]` s |
+| 重新接入已有浏览器的 `/json/version` 请求数 | 2 | 1 |
+| `connect()` 的串行 CDP 往返次数 | 4 | 1 |
+| `dom_tree()` 的串行 CDP 往返次数 | 2 | 1 |
+| `wait()` 的轮询间隔 | `[0.25, 0.25, 0.25]` s | `[0.02, 0.04, 0.08]` s |
+| `close()` 释放阻塞调用方耗时 | 5015 ms | 0.0 ms |
+| `import octop_browser` 加载的模块数 | 390 | 267 |
+| `import octop_browser` 加载的第三方包根数 | 15 | 5 |
+
+- 启动轮询改为首次 10 ms、逐次翻倍至配置上限，且全程复用同一个
+  `aiohttp.ClientSession`。
+- 重新接入只发一次 `/json/version`（原先 `_port_in_use` + `_get_ws_url` 各发
+  一次）。
+- `Page.enable` / `DOM.enable` / `Runtime.enable` 与视口设置并发下发；
+  `dom_tree()` 的 `DOM.getDocument` 与 `Runtime.evaluate` 并发下发。
+- `wait()` 轮询改为 20 ms 起、翻倍至 250 ms。
+- aiohttp 与 websockets 改为按需导入，顶层 `import octop_browser` 不再拉入
+  传输层。
+
+### 变更
+
+- 仓库身份迁移到 `xkx121029/octop-browser`：作者、project-urls、README 徽章与
+  互链、CONTRIBUTING / SECURITY / issue 模板 / skills 文档全部更新；原 MIT
+  版权声明保留。
+- 新增 `scripts/bench_hot_paths.py`，用于度量上述指标（支持切到任意版本对比）。
+- 分发名与导入名 `octop-browser` / `octop_browser` 保持不变；`BROWSER_USE_*`
+  环境变量与 `~/.octop-browser` 状态目录为兼容既有安装而保留。
 
 ## [1.0.0] - 2026-09-24
 
@@ -65,5 +130,6 @@
 - `install-browser` 自动下载并校验受管 Chromium，无需预装浏览器。
 - 提供流式安装事件，便于外部展示进度。
 
-[Unreleased]: https://github.com/TencentCloud/octop-browser/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/TencentCloud/octop-browser/releases/tag/v1.0.0
+[Unreleased]: https://github.com/xkx121029/octop-browser/compare/v1.0.0...HEAD
+[1.0.1]: https://github.com/xkx121029/octop-browser/compare/v1.0.0...v1.0.1
+[1.0.0]: https://github.com/xkx121029/octop-browser/releases/tag/v1.0.0
