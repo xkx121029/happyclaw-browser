@@ -115,7 +115,7 @@ def test_ensure_chromium_pip_then_install(monkeypatch):
     monkeypatch.setattr(install_mod.subprocess, "run", fake_run)
     assert ensure_chromium(quiet=True) is True
     assert len(calls) == 2
-    assert calls[0][-1] == "playwright"
+    assert calls[0][-1].startswith("playwright")
     assert calls[1][-3:] == ["playwright", "install", "chromium"]
 
 
@@ -381,7 +381,7 @@ async def test_install_stream_pip_then_install(monkeypatch):
     assert events[-1] == {"done": True, "success": True}
     # pip bootstrap, then the Chromium download. install-deps is appended on
     # Linux only, so assert on the leading steps rather than the total count.
-    assert invoked[0][-1] == "playwright"
+    assert invoked[0][-1].startswith("playwright")
     assert invoked[1][-3:] == ["playwright", "install", "chromium"]
 
 
@@ -769,3 +769,14 @@ async def test_mcp_record_list_uses_recording_store(monkeypatch):
     assert len(out) == 1
     assert "rec_demo" in out[0].text
     assert "recordings" in out[0].text
+
+
+def test_pip_bootstrap_pins_the_playwright_range():
+    """Nothing here imports Playwright, but the installer drives its CLI and
+    the launcher probes its browser layout, so the fetched version is bounded."""
+    from octop_browser.install import _PLAYWRIGHT_REQUIREMENT
+
+    assert _PLAYWRIGHT_REQUIREMENT.startswith("playwright>=")
+    assert "<2" in _PLAYWRIGHT_REQUIREMENT
+    for cmd in install_mod._pip_install_candidates():
+        assert _PLAYWRIGHT_REQUIREMENT in cmd, cmd

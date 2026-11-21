@@ -75,6 +75,13 @@ __all__ = [
 _SKIP_PIP_ENV = "OCTOP_SKIP_PLAYWRIGHT_PIP"
 #: Alternate env name, still honoured so existing deployment scripts keep working.
 _SKIP_PIP_ENV_LEGACY = "HARNESS_SKIP_PLAYWRIGHT_PIP"
+#: What the pip bootstrap installs when Playwright is missing. Nothing in this
+#: library imports Playwright - it is only here to fetch a Chromium binary - but
+#: ``cdp.launcher._find_playwright_chromium`` probes the browser directory
+#: layouts of specific Playwright generations and the installer drives
+#: ``playwright install chromium``, so an unbounded upgrade can silently break
+#: both. The upper bound is the one this release is verified against.
+_PLAYWRIGHT_REQUIREMENT = "playwright>=1.40,<2"
 
 
 class InstallEvent(TypedDict, total=False):
@@ -145,9 +152,18 @@ def _pip_install_candidates() -> list[list[str]]:
         # Pass --python to avoid "No virtual environment found" when uv is
         # invoked outside an activated venv (e.g. from a FastAPI worker).
         candidates.append(
-            ["uv", "pip", "install", "playwright", "--python", sys.executable]
+            [
+                "uv",
+                "pip",
+                "install",
+                _PLAYWRIGHT_REQUIREMENT,
+                "--python",
+                sys.executable,
+            ]
         )
-    candidates.append([sys.executable, "-m", "pip", "install", "playwright"])
+    candidates.append(
+        [sys.executable, "-m", "pip", "install", _PLAYWRIGHT_REQUIREMENT]
+    )
     return candidates
 
 
