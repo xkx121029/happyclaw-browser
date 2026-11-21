@@ -40,3 +40,24 @@ class TabInfo(BaseModel):
     url: str
     title: str
     active: bool
+
+
+class ArtifactRef(BaseModel):
+    """A file this library wrote on the caller's behalf.
+
+    Returned instead of raw bytes so an agent toolchain can pass a path
+    around cheaply. ``path`` is absolute and already on disk; ``format`` is
+    the concrete encoding (``png`` / ``jpeg`` / ``pdf`` / ``html``) which can
+    differ from ``kind`` when a screenshot had to be downgraded to fit under
+    ``max_bytes``.
+    """
+
+    kind: str
+    path: str
+    format: str
+    size_bytes: int
+    max_bytes: int = 0
+    url: str = ""
+    title: str = ""
+    width: int = 0
+    height: int = 0

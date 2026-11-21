@@ -241,6 +241,106 @@ def _build_parser() -> argparse.ArgumentParser:
     _add_common_args(wait)
     _add_mode_args(wait)
 
+    # -- wait-selector ------------------------------------------------------
+    wait_selector = sub.add_parser(
+        "wait-selector",
+        help="Wait for a selector to be attached / visible / hidden / detached.",
+        description=(
+            "Poll until the selector reaches the requested state. On timeout "
+            "the error names the URL, the interactive-element count, the "
+            "selector match counts and a screenshot of the page at the "
+            "deadline; --json returns that payload under metadata.wait."
+        ),
+    )
+    wait_selector.add_argument("selector", help="CSS selector to watch.")
+    wait_selector.add_argument(
+        "--state",
+        default="visible",
+        choices=["attached", "visible", "hidden", "detached"],
+    )
+    wait_selector.add_argument("--timeout-ms", type=int, default=10000)
+    wait_selector.add_argument(
+        "--no-screenshot",
+        action="store_true",
+        help="Skip the page screenshot captured when the wait times out.",
+    )
+    _add_common_args(wait_selector)
+    _add_mode_args(wait_selector)
+
+    # -- wait-navigation ----------------------------------------------------
+    wait_nav = sub.add_parser(
+        "wait-navigation",
+        help="Wait for a main-frame navigation to complete.",
+        description=(
+            "Success means a real main-frame navigation finished loading. "
+            "--url-contains also accepts an already-landed URL, so retrying a "
+            "wait that already passed returns immediately."
+        ),
+    )
+    wait_nav.add_argument("--url-contains")
+    wait_nav.add_argument("--timeout-ms", type=int, default=30000)
+    wait_nav.add_argument("--no-screenshot", action="store_true")
+    _add_common_args(wait_nav)
+    _add_mode_args(wait_nav)
+
+    # -- wait-network-idle --------------------------------------------------
+    wait_idle = sub.add_parser(
+        "wait-network-idle",
+        help="Wait until no request has been in flight for --idle-ms.",
+        description=(
+            "On timeout the report lists the requests still open, which is "
+            "usually the difference between a slow app and an unreachable "
+            "analytics endpoint."
+        ),
+    )
+    wait_idle.add_argument("--idle-ms", type=int, default=500)
+    wait_idle.add_argument("--timeout-ms", type=int, default=30000)
+    wait_idle.add_argument("--no-screenshot", action="store_true")
+    _add_common_args(wait_idle)
+    _add_mode_args(wait_idle)
+
+    # -- artifact -----------------------------------------------------------
+    artifact = sub.add_parser(
+        "artifact",
+        help="Capture a size-capped screenshot / PDF / DOM snapshot.",
+        description=(
+            "Writes the file under the artifact directory (one subdirectory "
+            "per kind) and prints its path. An artifact larger than the "
+            "ceiling fails with its real size instead of being written."
+        ),
+    )
+    artifact.add_argument("kind", choices=["screenshot", "pdf", "dom"])
+    artifact.add_argument("--path", help="Destination file (absolute or relative).")
+    artifact.add_argument("--max-bytes", type=int)
+    artifact.add_argument("--element-ref", help="Screenshot: clip to one element.")
+    artifact.add_argument("--full-page", action="store_true")
+    artifact.add_argument(
+        "--no-background",
+        action="store_true",
+        help="PDF: drop CSS backgrounds.",
+    )
+    _add_common_args(artifact)
+    _add_mode_args(artifact)
+
+    # -- session-info / pool-status ----------------------------------------
+    session_info = sub.add_parser(
+        "session-info",
+        help="Report the profile's live session and the CDP port it actually uses.",
+        description=(
+            "Answers 'where is my browser': the port is assigned at launch and "
+            "re-assigned when another process already owns it, so an "
+            "environment variable only says where the scan started. Never "
+            "launches a browser."
+        ),
+    )
+    _add_common_args(session_info)
+
+    pool_status = sub.add_parser(
+        "pool-status",
+        help="Report session-pool counters (live, queued, reclaimed, rebuilt).",
+    )
+    _add_common_args(pool_status)
+
     # -- select -------------------------------------------------------------
     select = sub.add_parser("select", help="Set a <select> element value.")
     select.add_argument("value")
@@ -420,6 +520,11 @@ _ACTION_ALIAS = {
     "close-tab": "close_tab",
     "list-tabs": "list_tabs",
     "close-session": "close_session",
+    "wait-selector": "wait_for_selector",
+    "wait-navigation": "wait_for_navigation",
+    "wait-network-idle": "wait_for_network_idle",
+    "session-info": "session_info",
+    "pool-status": "pool_status",
 }
 
 
@@ -470,6 +575,32 @@ def _action_kwargs(args: argparse.Namespace) -> dict[str, Any]:
         if args.selector:
             kwargs["selector"] = args.selector
         kwargs["timeout_ms"] = args.timeout_ms
+    elif cmd == "wait-selector":
+        kwargs["selector"] = args.selector
+        kwargs["state"] = args.state
+        kwargs["timeout_ms"] = args.timeout_ms
+        kwargs["screenshot_on_timeout"] = not args.no_screenshot
+    elif cmd == "wait-navigation":
+        if args.url_contains:
+            kwargs["url_contains"] = args.url_contains
+        kwargs["timeout_ms"] = args.timeout_ms
+        kwargs["screenshot_on_timeout"] = not args.no_screenshot
+    elif cmd == "wait-network-idle":
+        kwargs["idle_ms"] = args.idle_ms
+        kwargs["timeout_ms"] = args.timeout_ms
+        kwargs["screenshot_on_timeout"] = not args.no_screenshot
+    elif cmd == "artifact":
+        kwargs["kind"] = args.kind
+        if args.path:
+            kwargs["path"] = args.path
+        if args.max_bytes is not None:
+            kwargs["max_bytes"] = args.max_bytes
+        if args.element_ref:
+            kwargs["element_ref"] = args.element_ref
+        if args.full_page:
+            kwargs["full_page"] = True
+        if args.no_background:
+            kwargs["print_background"] = False
     elif cmd == "select":
         kwargs["value"] = args.value
         if args.ref:

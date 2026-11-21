@@ -10,6 +10,7 @@ from typing import Any
 
 from happyclaw_browser.actions import capture, interact, js_eval
 from happyclaw_browser.actions import navigate as nav_actions
+from happyclaw_browser.artifacts import capture_artifact
 from happyclaw_browser.cdp.client import CDPClient
 from happyclaw_browser.dom.builder import DOMBuilder, DOMLevel
 from happyclaw_browser.dom.refs import RefCache
@@ -20,6 +21,15 @@ from happyclaw_browser.models import ActionMetrics, TabInfo, ToolResult
 from happyclaw_browser.profile import Profile, ProfileManager
 from happyclaw_browser.settings import HappyclawSettings
 from happyclaw_browser.settings import settings as _default_settings
+from happyclaw_browser.waits import (
+    wait_for_navigation as _wait_for_navigation,
+)
+from happyclaw_browser.waits import (
+    wait_for_network_idle as _wait_for_network_idle,
+)
+from happyclaw_browser.waits import (
+    wait_for_selector as _wait_for_selector,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -30,11 +40,20 @@ _REUSABLE_BLANK_URLS = {"about:blank", "chrome://newtab/", "chrome://newtab"}
 class _InternalCDPSession:
     """Low-level CDP session: owns a CDPClient and RefCache for one page."""
 
-    def __init__(self, profile: Profile, cfg: HappyclawSettings) -> None:
+    def __init__(
+        self,
+        profile: Profile,
+        cfg: HappyclawSettings,
+        *,
+        enable_idle_reaper: bool = True,
+    ) -> None:
         self._profile = profile
         self._cfg = cfg
-        self._idle_controller: BrowserIdleController | None = idle_controller_for(
-            profile, cfg
+        # Pooled sessions are reaped by the pool, which tracks leases across
+        # profiles; a second per-session watchdog would race it for the same
+        # browser. Direct ``BrowserSession`` users keep the old behaviour.
+        self._idle_controller: BrowserIdleController | None = (
+            idle_controller_for(profile, cfg) if enable_idle_reaper else None
         )
         self._client = CDPClient(
             timeout=cfg.cdp_timeout,
@@ -176,6 +195,11 @@ class _InternalCDPSession:
         return self._client
 
     @property
+    def connected(self) -> bool:
+        """True when the WebSocket is actually up (a cheap liveness probe)."""
+        return self._connected and self._client.connected
+
+    @property
     def ref_cache(self) -> RefCache:
         return self._ref_cache
 
@@ -204,6 +228,27 @@ class BrowserSession(HooksMixin):
         self._total_tokens = 0
         self._errors = 0
 
+    @property
+    def profile_name(self) -> str:
+        """Name of the Chrome profile this session drives."""
+        return self._profile_name
+
+    @property
+    def cdp_port(self) -> int:
+        """The debug port Chrome is actually listening on right now.
+
+        The port is assigned when the profile is created and re-assigned when
+        another process already owns it, so this is the only reliable answer
+        to "where is my browser" — an environment variable only says where the
+        scan started.
+        """
+        return int(getattr(self._internal._profile, "cdp_port", 0))
+
+    @property
+    def is_alive(self) -> bool:
+        """True while the browser behind this session is still reachable."""
+        return bool(getattr(self._internal, "connected", False))
+
     @classmethod
     async def create(
         cls,
@@ -213,6 +258,8 @@ class BrowserSession(HooksMixin):
         urls: list[str] | None = None,
         profile_manager: ProfileManager | None = None,
         settings: HappyclawSettings | None = None,
+        *,
+        enable_idle_reaper: bool = True,
     ) -> "BrowserSession":
         """Create a new BrowserSession, launching or re-attaching Chrome.
 
@@ -231,6 +278,9 @@ class BrowserSession(HooksMixin):
                 non-default base directories).
             settings: :class:`HappyclawSettings` instance. Defaults to the module-level
                 singleton which reads from environment variables.
+            enable_idle_reaper: Start the per-session idle watchdog. The
+                session pool passes ``False`` and reaps on its own, because two
+                watchdogs chasing one browser race each other.
         """
         cfg = settings or _default_settings
         pm = profile_manager or _default_profile_manager
@@ -242,7 +292,7 @@ class BrowserSession(HooksMixin):
         else:
             effective_mode = normalize_mode(mode) if mode else cfg.browser_mode
             is_headless = resolve_headless(effective_mode)
-        internal = _InternalCDPSession(p, cfg)
+        internal = _InternalCDPSession(p, cfg, enable_idle_reaper=enable_idle_reaper)
         await internal.connect(headless=is_headless)
         session = cls(internal, profile)
 
@@ -568,6 +618,138 @@ class BrowserSession(HooksMixin):
                 dom_nodes_scanned=0,
                 estimated_tokens=0,
             ),
+        )
+        await self._record(result)
+        return result
+
+    # ------------------------------------------------------------------
+    # Reliable waits
+    # ------------------------------------------------------------------
+
+    async def wait_for_selector(
+        self,
+        selector: str,
+        timeout_ms: int = 10000,
+        state: str = "visible",
+        *,
+        screenshot_on_timeout: bool = True,
+    ) -> ToolResult:
+        """Wait until ``selector`` is attached / visible / hidden / detached.
+
+        On timeout ``metadata["wait"]`` carries the URL, title, readyState,
+        interactive-element count, selector match counts and a screenshot
+        path, so the caller does not have to reconstruct what the page looked
+        like from a bare "Timeout" string.
+        """
+        await self._fire(
+            "before_action",
+            {
+                "action": "wait_for_selector",
+                "params": {"selector": selector, "state": state},
+            },
+        )
+        result = await _wait_for_selector(
+            self._internal.client,
+            selector,
+            timeout_ms=timeout_ms,
+            state=state,
+            ref_cache=self._internal.ref_cache,
+            settings=self._internal._cfg,
+            screenshot_on_timeout=screenshot_on_timeout,
+        )
+        await self._record(result)
+        return result
+
+    async def wait_for_navigation(
+        self,
+        url_contains: str | None = None,
+        timeout_ms: int = 30000,
+        *,
+        screenshot_on_timeout: bool = True,
+    ) -> ToolResult:
+        """Wait for a main-frame navigation to complete.
+
+        With ``url_contains`` the landed URL is the evidence, which also makes
+        a retry of an already-finished navigation return immediately.
+        Refs cached before the navigation are invalidated on success.
+        """
+        await self._fire(
+            "before_action",
+            {"action": "wait_for_navigation", "params": {}},
+        )
+        result = await _wait_for_navigation(
+            self._internal.client,
+            url_contains=url_contains,
+            timeout_ms=timeout_ms,
+            ref_cache=self._internal.ref_cache,
+            settings=self._internal._cfg,
+            screenshot_on_timeout=screenshot_on_timeout,
+        )
+        await self._record(result)
+        return result
+
+    async def wait_for_network_idle(
+        self,
+        idle_ms: int = 500,
+        timeout_ms: int = 30000,
+        *,
+        screenshot_on_timeout: bool = True,
+    ) -> ToolResult:
+        """Wait until no request has been in flight for ``idle_ms``.
+
+        The timeout report names the requests still open, which is usually
+        the difference between "the app is slow" and "an analytics beacon is
+        unreachable from this box".
+        """
+        await self._fire(
+            "before_action",
+            {"action": "wait_for_network_idle", "params": {"idle_ms": idle_ms}},
+        )
+        result = await _wait_for_network_idle(
+            self._internal.client,
+            idle_ms=idle_ms,
+            timeout_ms=timeout_ms,
+            ref_cache=self._internal.ref_cache,
+            settings=self._internal._cfg,
+            screenshot_on_timeout=screenshot_on_timeout,
+        )
+        await self._record(result)
+        return result
+
+    # ------------------------------------------------------------------
+    # Artifacts
+    # ------------------------------------------------------------------
+
+    async def artifact(
+        self,
+        kind: str,
+        path: str | None = None,
+        max_bytes: int | None = None,
+        element_ref: str | None = None,
+        full_page: bool = False,
+        print_background: bool = True,
+    ) -> ToolResult:
+        """Write one artifact (``screenshot`` / ``pdf`` / ``dom``) and return
+        a :class:`~happyclaw_browser.models.ArtifactRef`.
+
+        The file path lands in ``content`` and ``metadata["artifact"]``; an
+        artifact that would exceed the size ceiling fails with its real size
+        instead of being written.
+        """
+        await self._fire(
+            "before_action",
+            {"action": "artifact", "params": {"kind": kind}},
+        )
+        result = await capture_artifact(
+            self._internal.client,
+            self._internal.ref_cache,
+            kind,
+            path=path,
+            max_bytes=max_bytes,
+            element_ref=element_ref,
+            full_page=full_page,
+            print_background=print_background,
+            settings=self._internal._cfg,
         )
         await self._record(result)
         return result

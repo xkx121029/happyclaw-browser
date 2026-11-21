@@ -52,6 +52,23 @@ Environment variables (all optional):
   BROWSER_USE_IDLE_TIMEOUT_MINUTES - stop a locally managed Chrome profile after
                           this many minutes without real CDP activity. 0 disables.
                           default: 0
+  BROWSER_USE_ARTIFACTS_DIR - base directory for the unified artifact API
+                          (``artifacts.capture``): one subdirectory per kind.
+                          default: ~/.happyclaw-browser/artifacts
+  BROWSER_USE_ARTIFACT_MAX_BYTES - hard ceiling for a single artifact. An
+                          artifact over the ceiling is refused instead of
+                          handed back, so callers never receive an
+                          unbounded multi-megabyte file. 0 disables the cap.
+                          default: 16777216 (16 MiB)
+  BROWSER_USE_POOL_MAX_SESSIONS - how many browser sessions the pool keeps
+                          live at once. Further profiles queue instead of
+                          failing. default: 4
+  BROWSER_USE_POOL_ACQUIRE_TIMEOUT - seconds an acquisition may wait for a
+                          free pool slot before raising. 0 waits forever.
+                          default: 0
+  BROWSER_USE_CDP_PORT_SCAN - how many consecutive CDP ports to probe for a
+                          free one when a profile's port is taken by another
+                          process. default: 200
 """
 
 from __future__ import annotations
@@ -221,6 +238,11 @@ class HappyclawSettings:
     )
     idle_timeout_minutes: float = field(
         default_factory=lambda: _env_float("BROWSER_USE_IDLE_TIMEOUT_MINUTES", 0.0)
+    )
+    artifacts_dir: Path = field(
+        default_factory=lambda: _env_path(
+            "BROWSER_USE_ARTIFACTS_DIR", state_dir() / "artifacts"
+        )
     )
     artifact_max_bytes: int = field(
         default_factory=lambda: _env_int(

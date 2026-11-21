@@ -15,7 +15,7 @@ from typing import IO, Any
 
 import aiohttp
 
-from happyclaw_browser.profile import Profile
+from happyclaw_browser.profile import Profile, port_available, reassign_port
 
 logger = logging.getLogger(__name__)
 
@@ -498,6 +498,39 @@ def _kill_quietly(proc: subprocess.Popen[bytes] | None) -> None:
             proc.kill()
 
 
+def _discard_failed_launch(profile: Profile) -> None:
+    """Leave no half-initialised profile behind after a failed launch.
+
+    Chrome writes ``Local State``, ``SingletonLock`` and a partial profile
+    before it binds its debug port. When it then dies — missing library,
+    sandbox refusal, no desktop session — that wreckage makes the *next*
+    launch of the same profile exit 21, and the user sees the same opaque
+    failure twice. A profile that never launched has nothing worth keeping,
+    so it is removed; an established one is kept (its cookies are the whole
+    point) and only its lock files are cleared.
+    """
+    profile.clear_pid()
+    data_dir = Path(profile.data_dir)
+    if profile.fresh:
+        shutil.rmtree(data_dir, ignore_errors=True)
+        logger.info(
+            "Discarded half-initialised profile %s after a failed launch",
+            data_dir,
+        )
+        return
+    from happyclaw_browser.cdp.launch_prep import (  # noqa: PLC0415
+        clear_profile_locks,
+    )
+
+    cleared = clear_profile_locks(data_dir)
+    if cleared:
+        logger.info(
+            "Cleared Chrome locks for %s after a failed launch: %s",
+            profile.name,
+            ", ".join(cleared),
+        )
+
+
 def _kill_recorded_pid(profile: Profile) -> bool:
     """Force-stop the Chrome this library launched for *profile*.
 
@@ -634,6 +667,13 @@ async def launch_or_attach(profile: Profile, headless: bool = False) -> str:
             "On macOS: brew install --cask google-chrome"
         )
 
+    # A sibling process (another HappyClaw thread, or a browser left over from
+    # an earlier run) may already own the profile's CDP port. Chrome exits on
+    # the bind failure and the caller only sees "Chrome exited immediately",
+    # so give the profile a free port first and record the one actually used.
+    if not port_available(profile.cdp_port, _settings.cdp_host):
+        reassign_port(profile, _settings)
+
     # Self-heal XDG_RUNTIME_DIR / SingletonLock / unwritable profiles before
     # spawn. Must pass ``env`` explicitly — relying on inherited os.environ is
     # not enough when wrappers or host agents ignore a late parent export.
@@ -686,6 +726,7 @@ async def launch_or_attach(profile: Profile, headless: bool = False) -> str:
                 profile.cdp_port, process=proc, stderr_file=stderr_file
             )
             profile.save_pid(proc.pid)
+            profile.fresh = False
             return ws_url
         except RuntimeError as exc:
             msg = str(exc)
@@ -719,6 +760,7 @@ async def launch_or_attach(profile: Profile, headless: bool = False) -> str:
                 profile.cdp_port, process=proc, stderr_file=stderr_file
             )
             profile.save_pid(proc.pid)
+            profile.fresh = False
             return ws_url
     except BaseException:
         # Cancellation, an unexpected probe error or an interrupted event
@@ -726,6 +768,7 @@ async def launch_or_attach(profile: Profile, headless: bool = False) -> str:
         # holds a handle on this child, so it would outlive the parent as an
         # orphan owning the profile's user-data-dir.
         _kill_quietly(proc)
+        _discard_failed_launch(profile)
         raise
     finally:
         stderr_file.close()

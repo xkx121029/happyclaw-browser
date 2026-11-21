@@ -48,7 +48,7 @@ async def test_browser_tool_recovers_once_from_disconnected_session(monkeypatch)
             events.append(f"broken.navigate:{url}")
             raise CDPSessionError("Not connected")
 
-        async def close(self) -> None:
+        async def close(self, *, kill: bool = False) -> None:
             events.append("broken.close")
 
     class FreshSession:
@@ -56,7 +56,7 @@ async def test_browser_tool_recovers_once_from_disconnected_session(monkeypatch)
             events.append(f"fresh.navigate:{url}")
             return make_tool_result("navigate")
 
-        async def close(self) -> None:
+        async def close(self, *, kill: bool = False) -> None:
             events.append("fresh.close")
 
     sessions = [BrokenSession(), FreshSession()]

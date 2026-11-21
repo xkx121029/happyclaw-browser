@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from typing import Any
 
@@ -152,6 +153,103 @@ _TOOLS = [
                 "profile": {"type": "string", "default": "default"},
             },
         },
+    ),
+    Tool(
+        name="browser_wait_for_selector",
+        description=(
+            "Wait until a CSS selector is attached/visible/hidden/detached. "
+            "On timeout the result carries the page URL, readyState, "
+            "interactive-element count, selector match counts and a "
+            "screenshot path, so no guessing about what the page showed."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "selector": {"type": "string"},
+                "state": {
+                    "type": "string",
+                    "enum": ["attached", "visible", "hidden", "detached"],
+                    "default": "visible",
+                },
+                "timeout_ms": {"type": "integer", "default": 10000},
+                "screenshot_on_timeout": {"type": "boolean", "default": True},
+                "profile": {"type": "string", "default": "default"},
+            },
+            "required": ["selector"],
+        },
+    ),
+    Tool(
+        name="browser_wait_for_navigation",
+        description=(
+            "Wait for a main-frame navigation to finish loading. With "
+            "url_contains an already-landed URL satisfies the wait, so retries "
+            "are safe."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "url_contains": {"type": "string"},
+                "timeout_ms": {"type": "integer", "default": 30000},
+                "screenshot_on_timeout": {"type": "boolean", "default": True},
+                "profile": {"type": "string", "default": "default"},
+            },
+        },
+    ),
+    Tool(
+        name="browser_wait_for_network_idle",
+        description=(
+            "Wait until no request has been in flight for idle_ms. On timeout "
+            "the report names the requests still open."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "idle_ms": {"type": "integer", "default": 500},
+                "timeout_ms": {"type": "integer", "default": 30000},
+                "screenshot_on_timeout": {"type": "boolean", "default": True},
+                "profile": {"type": "string", "default": "default"},
+            },
+        },
+    ),
+    Tool(
+        name="browser_artifact",
+        description=(
+            "Capture a screenshot, print-to-PDF or DOM snapshot. Writes a file "
+            "under the artifact directory and returns its path plus size; an "
+            "artifact over the byte ceiling fails instead of being written."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "kind": {
+                    "type": "string",
+                    "enum": ["screenshot", "pdf", "dom"],
+                },
+                "path": {"type": "string"},
+                "max_bytes": {"type": "integer"},
+                "element_ref": {"type": "string"},
+                "full_page": {"type": "boolean", "default": False},
+                "print_background": {"type": "boolean", "default": True},
+                "profile": {"type": "string", "default": "default"},
+            },
+            "required": ["kind"],
+        },
+    ),
+    Tool(
+        name="browser_session_info",
+        description=(
+            "Report whether a session is live for this profile and the CDP "
+            "port it actually uses. Never launches a browser."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {"profile": {"type": "string", "default": "default"}},
+        },
+    ),
+    Tool(
+        name="browser_pool_status",
+        description="Report session-pool counters (live, queued, reclaimed, rebuilt).",
+        inputSchema={"type": "object", "properties": {}},
     ),
     Tool(
         name="browser_record_doctor",
@@ -356,6 +454,12 @@ _ACTION_MAP = {
     "browser_fill": "fill",
     "browser_press": "press",
     "browser_wait": "wait",
+    "browser_wait_for_selector": "wait_for_selector",
+    "browser_wait_for_navigation": "wait_for_navigation",
+    "browser_wait_for_network_idle": "wait_for_network_idle",
+    "browser_artifact": "artifact",
+    "browser_session_info": "session_info",
+    "browser_pool_status": "pool_status",
     "browser_new_tab": "new_tab",
     "browser_switch_tab": "switch_tab",
     "browser_close_tab": "close_tab",
@@ -476,6 +580,10 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     text = result.content if isinstance(result.content, str) else str(result.content)
     if not result.success:
         text = f"ERROR: {result.error}"
+        if result.metadata:
+            # A failed wait or an oversized artifact explains itself in the
+            # structured payload; without it the caller is back to guessing.
+            text = f"{text}\n{json.dumps(result.metadata, ensure_ascii=False)}"
     return [TextContent(type="text", text=text)]
 
 

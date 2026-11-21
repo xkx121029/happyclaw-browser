@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import shutil
+import socket
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -53,6 +56,147 @@ def _readable_state_file(directory: Path, name: str, legacy: tuple[str, ...]) ->
     return path
 
 
+def _probe_host(cdp_host: str) -> str:
+    """Map a configured CDP host onto an address a socket can bind."""
+    if cdp_host in {"", "localhost", "127.0.0.1"}:
+        return "127.0.0.1"
+    return cdp_host
+
+
+def port_available(port: int, cdp_host: str = "localhost") -> bool:
+    """Return True when *port* can be bound on *cdp_host* right now.
+
+    Chrome cannot bind ``--remote-debugging-port`` on a port another process
+    already owns, and the launcher only reports that as an opaque "Chrome
+    exited immediately". Probing before assignment turns a shared machine —
+    several HappyClaw threads, or a leftover browser from a previous run —
+    into a launch on a neighbouring port instead of a hard failure.
+    """
+    if not 1 <= port <= 65535:
+        return False
+    address = _probe_host(cdp_host)
+    family = socket.AF_INET6 if ":" in address else socket.AF_INET
+    try:
+        probe = socket.socket(family, socket.SOCK_STREAM)
+    except OSError:  # pragma: no cover - address family unavailable
+        return False
+    try:
+        probe.bind((address, port))
+    except OSError:
+        return False
+    finally:
+        probe.close()
+    return True
+
+
+def process_alive(pid: int) -> bool:
+    """Best-effort liveness probe for a recorded Chrome pid."""
+    if pid <= 0:
+        return False
+    if os.name == "nt":
+        try:
+            result = subprocess.run(  # noqa: S603
+                ["tasklist", "/FI", f"PID eq {pid}", "/NH"],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+        except (OSError, subprocess.SubprocessError):
+            return False
+        return str(pid) in result.stdout
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+    return True
+
+
+def _first_free_port(
+    *,
+    start: int,
+    limit: int,
+    cdp_host: str,
+    reserved: set[int],
+) -> int | None:
+    """Return the first bindable port in ``[start, start + limit)``, or None."""
+    for offset in range(max(int(limit), 1)):
+        port = max(int(start), 1) + offset
+        if port in reserved or not port_available(port, cdp_host):
+            continue
+        return port
+    return None
+
+
+def _read_ports_file(base_dir: Path) -> dict[str, int]:
+    path = _readable_state_file(
+        base_dir, _PROFILE_PORTS_FILE, _LEGACY_PROFILE_PORTS_FILES
+    )
+    if not path.is_file():
+        return {}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        logger.debug("Could not read %s: %s", path, exc)
+        return {}
+    if not isinstance(payload, dict):
+        return {}
+    ports: dict[str, int] = {}
+    for key, value in payload.items():
+        if isinstance(key, str) and isinstance(value, int):
+            ports[key] = value
+    return ports
+
+
+def _write_ports_file(base_dir: Path, ports: dict[str, int]) -> None:
+    try:
+        base_dir.mkdir(parents=True, exist_ok=True)
+        (base_dir / _PROFILE_PORTS_FILE).write_text(
+            json.dumps(ports, sort_keys=True), encoding="utf-8"
+        )
+    except OSError as exc:
+        logger.debug("Could not write port map under %s: %s", base_dir, exc)
+
+
+def reassign_port(profile: Profile, cfg: HappyclawSettings) -> int | None:
+    """Move *profile* to a free CDP port and persist the new mapping.
+
+    The launcher calls this when the profile's assigned port is owned by a
+    process that is not this profile's Chrome (another HappyClaw thread, a
+    browser left over from an earlier run, an unrelated daemon). Updating
+    ``profile.cdp_port`` in place is what makes the *actual* port visible to
+    every caller that already holds the profile object.
+
+    Returns the new port, or ``None`` when the whole scan window is taken.
+    """
+    base_dir = Path(profile.data_dir).parent
+    ports = _read_ports_file(base_dir)
+    reserved = {p for name, p in ports.items() if name != profile.name}
+    port = _first_free_port(
+        start=cfg.cdp_port_start,
+        limit=cfg.cdp_port_scan_limit,
+        cdp_host=cfg.cdp_host,
+        reserved=reserved,
+    )
+    if port is None:
+        return None
+    ports[profile.name] = port
+    _write_ports_file(base_dir, ports)
+    previous = profile.cdp_port
+    profile.cdp_port = port
+    if previous != port:
+        # The cached target id belongs to the browser that owned the old
+        # port; a fresh instance on a fresh port cannot resolve it.
+        profile.clear_target()
+        logger.warning(
+            "CDP port %d for profile %r is taken; using %d instead",
+            previous,
+            profile.name,
+            port,
+        )
+    return port
+
+
 @dataclass
 class Profile:
     """A named browser profile backed by a Chrome user-data-dir."""
@@ -60,6 +204,12 @@ class Profile:
     name: str
     data_dir: Path
     cdp_port: int
+
+    #: True while this profile has never been launched successfully. A failed
+    #: first launch leaves a half-initialised user-data-dir (partial ``Local
+    #: State``, ``SingletonLock``) that makes the *next* launch exit 21, so the
+    #: launcher removes the directory instead of keeping the wreckage.
+    fresh: bool = False
 
     # ------------------------------------------------------------------
     # Cross-process target stickiness
@@ -183,61 +333,70 @@ class ProfileManager:
         self._base_dir = base_dir if base_dir is not None else cfg.profiles_dir
         self._profiles: dict[str, Profile] = {}
 
-    @property
-    def _ports_path(self) -> Path:
-        return self._base_dir / _PROFILE_PORTS_FILE
-
     def _load_ports(self) -> dict[str, int]:
-        path = _readable_state_file(
-            self._base_dir, _PROFILE_PORTS_FILE, _LEGACY_PROFILE_PORTS_FILES
-        )
-        if not path.is_file():
-            return {}
-        try:
-            payload = json.loads(path.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError) as exc:
-            logger.debug("Could not read %s: %s", path, exc)
-            return {}
-        if not isinstance(payload, dict):
-            return {}
-        ports: dict[str, int] = {}
-        for key, value in payload.items():
-            if isinstance(key, str) and isinstance(value, int):
-                ports[key] = value
-        return ports
+        return _read_ports_file(self._base_dir)
 
     def _save_ports(self, ports: dict[str, int]) -> None:
-        path = self._ports_path
-        try:
-            self._base_dir.mkdir(parents=True, exist_ok=True)
-            path.write_text(json.dumps(ports, sort_keys=True), encoding="utf-8")
-        except OSError as exc:
-            logger.debug("Could not write %s: %s", path, exc)
+        _write_ports_file(self._base_dir, ports)
 
     def _assign_port(self, name: str) -> int:
+        """Return the CDP port for *name*, steering clear of ports in use.
+
+        A profile keeps its recorded port as long as that port is bindable, or
+        as long as the Chrome this library launched for it is still alive —
+        re-attaching to a running browser must not shuffle ports. Anything
+        else (a sibling thread's browser, an unrelated listener) forces a scan
+        for the next free port.
+        """
         ports = self._load_ports()
+        reserved = set(ports.values()) | {p.cdp_port for p in self._profiles.values()}
         existing = ports.get(name)
-        if existing is not None:
+        if existing is not None and self._port_reusable(name, existing):
             return existing
 
-        used_ports = set(ports.values()) | {p.cdp_port for p in self._profiles.values()}
-        port = self._settings.cdp_port_start
-        while port in used_ports:
-            port += 1
+        port = _first_free_port(
+            start=self._settings.cdp_port_start,
+            limit=self._settings.cdp_port_scan_limit,
+            cdp_host=self._settings.cdp_host,
+            reserved=reserved,
+        )
+        scan_end = (
+            self._settings.cdp_port_start + self._settings.cdp_port_scan_limit - 1
+        )
+        if port is None:
+            raise RuntimeError(
+                f"No free CDP port in {self._settings.cdp_port_start}-{scan_end} "
+                f"on {self._settings.cdp_host}. Raise BROWSER_USE_CDP_PORT_START "
+                "or BROWSER_USE_CDP_PORT_SCAN."
+            )
         ports[name] = port
         self._save_ports(ports)
         return port
+
+    def _port_reusable(self, name: str, port: int) -> bool:
+        """True when *port* is still this profile's own CDP endpoint."""
+        if port_available(port, self._settings.cdp_host):
+            return True
+        recorded = Profile(
+            name=name, data_dir=self._base_dir / name, cdp_port=port
+        ).load_pid()
+        return recorded is not None and process_alive(recorded)
 
     def get_or_create(self, name: str) -> Profile:
         """Return an existing profile or create a new one."""
         if name in self._profiles:
             return self._profiles[name]
         data_dir = self._base_dir / name
+        fresh = not data_dir.exists()
         data_dir.mkdir(parents=True, exist_ok=True)
         port = self._assign_port(name)
-        profile = Profile(name=name, data_dir=data_dir, cdp_port=port)
+        profile = Profile(name=name, data_dir=data_dir, cdp_port=port, fresh=fresh)
         self._profiles[name] = profile
         return profile
+
+    def assigned_port(self, name: str) -> int:
+        """Return the CDP port *name* is (or will be) listening on."""
+        return self.get_or_create(name).cdp_port
 
     def list_profiles(self) -> list[Profile]:
         """Return all known profiles."""

@@ -133,6 +133,11 @@ class CDPClient:
         """Enable a CDP domain (e.g. 'DOM', 'Page', 'Input')."""
         await self.send(f"{domain}.enable")
 
+    @property
+    def connected(self) -> bool:
+        """True while the WebSocket has not been closed."""
+        return self._ws is not None
+
     def on(self, event: str, callback: Callable[..., Any]) -> None:
         """Register a listener for a CDP event."""
         self._listeners.setdefault(event, []).append(callback)

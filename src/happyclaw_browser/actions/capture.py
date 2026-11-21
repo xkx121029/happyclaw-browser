@@ -46,6 +46,7 @@ from happyclaw_browser.settings import settings as _default_settings
 def _resolve_path(
     path: str | Path | None,
     cfg: HappyclawSettings,
+    suffix: str = ".png",
 ) -> Path:
     """Compute the destination path for a screenshot."""
     base = Path(cfg.screenshots_dir)
@@ -56,7 +57,7 @@ def _resolve_path(
         candidate.parent.mkdir(parents=True, exist_ok=True)
         return candidate
     base.mkdir(parents=True, exist_ok=True)
-    return base / f"happyclaw-{int(time.time() * 1000)}.png"
+    return base / f"happyclaw-{int(time.time() * 1000)}{suffix}"
 
 
 async def _page_context(client: CDPClient) -> dict[str, str]:
@@ -92,6 +93,9 @@ async def screenshot(
     full_page: bool = False,
     path: str | Path | None = None,
     settings: HappyclawSettings | None = None,
+    *,
+    image_format: str = "png",
+    quality: int | None = None,
 ) -> ToolResult:
     """Capture a screenshot, write it to disk, and return its path.
 
@@ -113,6 +117,10 @@ async def screenshot(
             paths resolve under ``settings.screenshots_dir``.
         settings: :class:`HappyclawSettings` override. Defaults to the module
             singleton (env-driven).
+        image_format: ``"png"`` (default) or ``"jpeg"``. JPEG exists so a
+            caller that must fit a byte ceiling — the unified artifact API —
+            can re-encode instead of refusing the capture outright.
+        quality: JPEG quality (0-100). Ignored for PNG.
 
     Returns:
         :class:`ToolResult` whose ``content`` is the absolute path string of
@@ -122,7 +130,10 @@ async def screenshot(
     """
     cfg = settings or _default_settings
     start = time.monotonic()
-    params: dict[str, Any] = {"format": "png"}
+    suffix = ".jpg" if image_format == "jpeg" else ".png"
+    params: dict[str, Any] = {"format": image_format}
+    if image_format == "jpeg" and quality is not None:
+        params["quality"] = max(0, min(int(quality), 100))
 
     width = 0
     height = 0
@@ -183,7 +194,7 @@ async def screenshot(
         )
 
     img_bytes = base64.b64decode(raw_b64)
-    target = _resolve_path(path, cfg)
+    target = _resolve_path(path, cfg, suffix)
     target.write_bytes(img_bytes)
 
     # Default (viewport) capture leaves width/height at 0 above. Try to fill

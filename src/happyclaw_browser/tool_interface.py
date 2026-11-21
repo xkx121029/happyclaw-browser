@@ -1,20 +1,32 @@
-"""Stateless browser_tool() entry point for AI frameworks."""
+"""Stateless browser_tool() entry point for AI frameworks.
+
+Sessions are kept by the process-wide :class:`~happyclaw_browser.pool.SessionPool`
+rather than by a plain dict, so repeated calls for a profile re-attach to the
+browser it already has instead of paying a cold start, a full pool queues
+instead of failing, idle browsers are reclaimed, and a session whose Chrome
+died is rebuilt before the caller sees an error.
+"""
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any
 
 from happyclaw_browser.cdp.client import CDPSessionError
 from happyclaw_browser.mode import BrowserMode
 from happyclaw_browser.models import ActionMetrics, ToolResult
+from happyclaw_browser.pool import SessionPool
 from happyclaw_browser.profile import ProfileManager
 from happyclaw_browser.session import BrowserSession
 from happyclaw_browser.settings import settings
 
 logger = logging.getLogger(__name__)
 
-_registry: dict[str, BrowserSession] = {}
+_pool = SessionPool()
+#: Live sessions by profile. Same dict the pool stores in, so the idle
+#: controller's ``_drop_session`` and direct inspection both stay honest.
+_registry: dict[str, BrowserSession] = _pool.sessions
 _global_hooks: dict[str, list[Any]] = {}
 
 _KNOWN_ACTIONS = frozenset(
@@ -27,6 +39,12 @@ _KNOWN_ACTIONS = frozenset(
         "fill",
         "press",
         "wait",
+        "wait_for_selector",
+        "wait_for_navigation",
+        "wait_for_network_idle",
+        "artifact",
+        "session_info",
+        "pool_status",
         "select",
         "scroll",
         "hover",
@@ -42,15 +60,26 @@ _KNOWN_ACTIONS = frozenset(
     ]
 )
 
+#: Actions answered without touching a browser. Creating one to answer a
+#: status question would be a cold start per probe.
+_STATUS_ACTIONS = frozenset(["session_info", "pool_status"])
+
+
+def _metrics(action: str, *, duration_ms: int = 0, tokens: int = 0) -> ActionMetrics:
+    return ActionMetrics(
+        action=action,
+        duration_ms=duration_ms,
+        dom_nodes_scanned=0,
+        estimated_tokens=tokens,
+    )
+
 
 def _error_result(action: str, message: str) -> ToolResult:
     return ToolResult(
         success=False,
         content="",
         error=message,
-        metrics=ActionMetrics(
-            action=action, duration_ms=0, dom_nodes_scanned=0, estimated_tokens=0
-        ),
+        metrics=_metrics(action),
     )
 
 
@@ -60,20 +89,12 @@ async def _get_or_create_session(
     mode: BrowserMode | None = None,
     urls: list[str] | None = None,
 ) -> BrowserSession:
-    if profile not in _registry:
-        sess = await BrowserSession.create(
-            profile=profile, headless=headless, mode=mode, urls=urls
-        )
-        _registry[profile] = sess
-    return _registry[profile]
+    return await _pool.acquire(profile, headless=headless, mode=mode, urls=urls)
 
 
 async def _drop_session(profile: str) -> None:
-    sess = _registry.pop(profile, None)
-    if sess is None:
-        return
     try:
-        await sess.close()
+        await _pool.close(profile)
     except Exception:  # pylint: disable=broad-except
         logger.debug(
             "Failed to close stale browser session for %s", profile, exc_info=True
@@ -88,6 +109,34 @@ def _is_disconnected_error(exc: Exception) -> bool:
     return False
 
 
+def _session_info(profile: str) -> ToolResult:
+    session = _registry.get(profile)
+    if session is None:
+        payload: dict[str, Any] = {"profile": profile, "live": False}
+    else:
+        payload = {
+            "profile": profile,
+            "live": bool(getattr(session, "is_alive", True)),
+            "cdp_port": getattr(session, "cdp_port", None),
+        }
+    return ToolResult(
+        success=True,
+        content=json.dumps(payload, ensure_ascii=False),
+        metrics=_metrics("session_info"),
+        metadata={"session": payload},
+    )
+
+
+def _pool_status() -> ToolResult:
+    stats = _pool.stats()
+    return ToolResult(
+        success=True,
+        content=json.dumps(stats, ensure_ascii=False),
+        metrics=_metrics("pool_status"),
+        metadata={"pool": stats},
+    )
+
+
 async def browser_tool(
     action: str,
     profile: str = "default",
@@ -99,8 +148,9 @@ async def browser_tool(
     """
     Stateless entry point for AI frameworks.
 
-    Routes to the correct :class:`BrowserSession` by ``profile`` name.
-    Creates a new session lazily if none exists for the profile.
+    Routes to the correct :class:`BrowserSession` by ``profile`` name, taking
+    a lease from the session pool and creating the session lazily on first
+    use.
 
     Args:
         action: One of the supported action strings.
@@ -122,6 +172,13 @@ async def browser_tool(
             action, f"Unknown action '{action}'. Valid: {sorted(_KNOWN_ACTIONS)}"
         )
 
+    if action in _STATUS_ACTIONS:
+        if kwargs:
+            return _error_result(
+                action, f"'{action}' takes no parameters beyond profile"
+            )
+        return _pool_status() if action == "pool_status" else _session_info(profile)
+
     if action == "close_session":
         kill = bool(kwargs.pop("kill", False))
         if kwargs:
@@ -129,15 +186,8 @@ async def browser_tool(
                 action,
                 f"Invalid parameters for 'close_session': {sorted(kwargs)}",
             )
-        sess = _registry.pop(profile, None)
-        if sess is not None:
-            try:
-                await sess.close(kill=kill)
-            except Exception:  # pylint: disable=broad-except
-                logger.debug(
-                    "Failed to close browser session for %s", profile, exc_info=True
-                )
-        elif kill and not settings.cdp_ws_url:
+        closed = await _pool.close(profile, kill=kill)
+        if not closed and kill and not settings.cdp_ws_url:
             from happyclaw_browser.cdp.launcher import (  # noqa: PLC0415
                 terminate_browser,
             )
@@ -152,12 +202,7 @@ async def browser_tool(
         return ToolResult(
             success=True,
             content=f"Session '{profile}' closed.",
-            metrics=ActionMetrics(
-                action="close_session",
-                duration_ms=0,
-                dom_nodes_scanned=0,
-                estimated_tokens=0,
-            ),
+            metrics=_metrics("close_session"),
         )
 
     try:
@@ -208,5 +253,9 @@ async def browser_tool(
                     profile,
                 )
                 return _error_result(action, str(retry_exc))
+            finally:
+                await _pool.release(profile)
         logger.exception("browser_tool error for action=%s profile=%s", action, profile)
         return _error_result(action, str(exc))
+    finally:
+        await _pool.release(profile)

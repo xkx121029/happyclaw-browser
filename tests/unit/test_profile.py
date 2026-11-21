@@ -2,12 +2,31 @@ from pathlib import Path
 
 import pytest
 
-from happyclaw_browser.profile import ProfileManager
+from happyclaw_browser.profile import ProfileManager, port_available
+from happyclaw_browser.settings import HappyclawSettings
 
 
 @pytest.fixture()
 def tmp_profiles_dir(tmp_path: Path) -> Path:
     return tmp_path / "profiles"
+
+
+def _free_window(count: int) -> int:
+    """Return a base port with ``count`` consecutive bindable ports."""
+    for base in range(24400, 26000, count + 1):
+        if all(port_available(base + offset) for offset in range(count)):
+            return base
+    raise AssertionError("no free consecutive port window on this machine")
+
+
+def _settings(base: int) -> HappyclawSettings:
+    """Pin the scan to a window this machine really has free.
+
+    Port assignment now skips ports another process owns, so a test that
+    asserts a *specific* port has to own the starting point — otherwise it
+    measures whatever browser another thread happens to have running.
+    """
+    return HappyclawSettings(cdp_port_start=base, cdp_port_scan_limit=10)
 
 
 def test_get_or_create_creates_directory(tmp_profiles_dir: Path) -> None:
@@ -25,17 +44,19 @@ def test_get_or_create_is_idempotent(tmp_profiles_dir: Path) -> None:
     assert p1.cdp_port == p2.cdp_port
 
 
-def test_default_profile_gets_port_9222(tmp_profiles_dir: Path) -> None:
-    pm = ProfileManager(base_dir=tmp_profiles_dir)
+def test_default_profile_gets_the_start_port(tmp_profiles_dir: Path) -> None:
+    base = _free_window(1)
+    pm = ProfileManager(base_dir=tmp_profiles_dir, settings=_settings(base))
     p = pm.get_or_create("default")
-    assert p.cdp_port == 9222
+    assert p.cdp_port == base
 
 
 def test_second_profile_gets_incremented_port(tmp_profiles_dir: Path) -> None:
-    pm = ProfileManager(base_dir=tmp_profiles_dir)
+    base = _free_window(2)
+    pm = ProfileManager(base_dir=tmp_profiles_dir, settings=_settings(base))
     pm.get_or_create("default")
     p2 = pm.get_or_create("other")
-    assert p2.cdp_port == 9223
+    assert p2.cdp_port == base + 1
 
 
 def test_port_assignment_survives_new_manager_instance(
@@ -84,24 +105,26 @@ def test_corrupt_port_mapping_file_rebuilds_from_start(
     (tmp_profiles_dir / ".happyclaw-browser-profiles.json").write_text(
         "not json", encoding="utf-8"
     )
+    base = _free_window(1)
 
-    pm = ProfileManager(base_dir=tmp_profiles_dir)
+    pm = ProfileManager(base_dir=tmp_profiles_dir, settings=_settings(base))
     profile = pm.get_or_create("default")
 
-    assert profile.cdp_port == 9222
+    assert profile.cdp_port == base
 
 
 def test_existing_profile_directory_without_mapping_claims_start_port(
     tmp_profiles_dir: Path,
 ) -> None:
     (tmp_profiles_dir / "default").mkdir(parents=True)
+    base = _free_window(2)
 
-    pm = ProfileManager(base_dir=tmp_profiles_dir)
+    pm = ProfileManager(base_dir=tmp_profiles_dir, settings=_settings(base))
     default_profile = pm.get_or_create("default")
     other_profile = pm.get_or_create("other")
 
-    assert default_profile.cdp_port == 9222
-    assert other_profile.cdp_port == 9223
+    assert default_profile.cdp_port == base
+    assert other_profile.cdp_port == base + 1
 
 
 def test_list_profiles(tmp_profiles_dir: Path) -> None:
