@@ -509,6 +509,7 @@ class BrowserSession(HooksMixin):
         await self._fire("before_action", {"action": "wait", "params": {}})
         deadline = time.monotonic() + max(timeout_ms, 0) / 1000
         error = "Timeout waiting for condition"
+        interval = 0.02
         while time.monotonic() <= deadline:
             try:
                 expr = (
@@ -549,9 +550,12 @@ class BrowserSession(HooksMixin):
                     return result
             except Exception as exc:  # pylint: disable=broad-except
                 error = str(exc)
-            import asyncio
 
-            await asyncio.sleep(0.25)
+            # Start tight so a condition that flips in tens of milliseconds
+            # is noticed right away, then back off so a slow page costs a
+            # bounded number of evaluates rather than a burst of them.
+            await asyncio.sleep(min(interval, max(deadline - time.monotonic(), 0)))
+            interval = min(interval * 2, 0.25)
         result = ToolResult(
             success=False,
             content="",
