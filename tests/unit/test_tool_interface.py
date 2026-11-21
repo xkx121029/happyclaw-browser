@@ -1,6 +1,8 @@
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
+import aiohttp
+
 from octop_browser.cdp.client import CDPSessionError
 from octop_browser.models import ActionMetrics, ToolResult
 from octop_browser.tool_interface import browser_tool
@@ -269,7 +271,7 @@ async def test_new_tab_reuses_background_blank_tab_before_creating_target(
 
     monkeypatch.setattr(session_mod.nav_actions, "navigate", fake_navigate)
     monkeypatch.setattr(
-        session_mod.aiohttp, "ClientSession", lambda: FakeClientSession()
+        aiohttp, "ClientSession", lambda: FakeClientSession()
     )
 
     sess = BrowserSession(FakeInternal(), profile_name="test")  # type: ignore[arg-type]
@@ -355,7 +357,7 @@ async def test_new_tab_creates_target_with_url_and_activates_it(monkeypatch):
 
     monkeypatch.setattr(session_mod.nav_actions, "navigate", unexpected_navigate)
     monkeypatch.setattr(
-        session_mod.aiohttp, "ClientSession", lambda: FakeClientSession()
+        aiohttp, "ClientSession", lambda: FakeClientSession()
     )
 
     sess = BrowserSession(FakeInternal(), profile_name="test")  # type: ignore[arg-type]
@@ -443,7 +445,7 @@ async def test_new_tab_creates_target_with_destination_url_to_avoid_blank_flash(
 
     monkeypatch.setattr(session_mod.nav_actions, "navigate", unexpected_navigate)
     monkeypatch.setattr(
-        session_mod.aiohttp, "ClientSession", lambda: FakeClientSession()
+        aiohttp, "ClientSession", lambda: FakeClientSession()
     )
 
     sess = BrowserSession(FakeInternal(), profile_name="test")  # type: ignore[arg-type]
@@ -532,7 +534,7 @@ async def test_new_tab_retries_switch_when_created_target_is_not_ready(monkeypat
     from octop_browser.session import BrowserSession
 
     monkeypatch.setattr(
-        session_mod.aiohttp, "ClientSession", lambda: FakeClientSession()
+        aiohttp, "ClientSession", lambda: FakeClientSession()
     )
     monkeypatch.setattr(session_mod.asyncio, "sleep", fake_sleep)
 
@@ -615,7 +617,7 @@ async def test_new_tab_reports_create_target_failure(monkeypatch):
 
     monkeypatch.setattr(session_mod.nav_actions, "navigate", unexpected_navigate)
     monkeypatch.setattr(
-        session_mod.aiohttp, "ClientSession", lambda: FakeClientSession()
+        aiohttp, "ClientSession", lambda: FakeClientSession()
     )
 
     sess = BrowserSession(FakeInternal(), profile_name="test")  # type: ignore[arg-type]
@@ -677,11 +679,10 @@ async def test_list_tabs_marks_only_sticky_target_active(monkeypatch):
             calls.append(("http.get", {"url": url}))
             return FakeResponse()
 
-    from octop_browser import session as session_mod
     from octop_browser.session import BrowserSession
 
     monkeypatch.setattr(
-        session_mod.aiohttp, "ClientSession", lambda: FakeClientSession()
+        aiohttp, "ClientSession", lambda: FakeClientSession()
     )
 
     sess = BrowserSession(FakeInternal(), profile_name="test")  # type: ignore[arg-type]
