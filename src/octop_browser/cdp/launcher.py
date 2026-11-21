@@ -454,11 +454,36 @@ async def _port_in_use_at(host: str, port: int) -> bool:
         return False
 
 
-async def _port_in_use(port: int) -> bool:
-    """Check if Chrome is already listening on the given port."""
+async def _attach_if_listening(port: int) -> str | None:
+    """Return the browser WebSocket URL when Chrome already serves *port*.
+
+    One ``/json/version`` request replaces the old
+    ``_port_in_use()`` + ``_get_ws_url()`` pair, which issued that same
+    request twice on every re-attach. ``None`` means nothing is listening
+    and the caller should launch instead; a listener that answers without a
+    debugger URL still goes through :func:`_get_ws_url` so the historical
+    "did not start" error keeps its wording.
+    """
     from octop_browser.settings import settings as _settings
 
-    return await _port_in_use_at(_settings.cdp_host, port)
+    url = f"http://{_settings.cdp_host}:{port}/json/version"
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=1)) as resp:
+                if resp.status != 200:
+                    return None
+                data = await resp.json(content_type=None)
+    except Exception:  # noqa: BLE001  # pylint: disable=broad-except
+        return None
+    ws_url = data.get("webSocketDebuggerUrl") if isinstance(data, dict) else None
+    if ws_url:
+        logger.debug(
+            "Attaching to existing Chrome on %s:%d",
+            _settings.cdp_host,
+            port,
+        )
+        return str(ws_url)
+    return await _get_ws_url(port)
 
 
 async def terminate_browser(
@@ -529,13 +554,9 @@ async def launch_or_attach(profile: Profile, headless: bool = False) -> str:
     """
     from octop_browser.settings import settings as _settings
 
-    if await _port_in_use(profile.cdp_port):
-        logger.debug(
-            "Attaching to existing Chrome on %s:%d",
-            _settings.cdp_host,
-            profile.cdp_port,
-        )
-        return await _get_ws_url(profile.cdp_port)
+    ws_url = await _attach_if_listening(profile.cdp_port)
+    if ws_url is not None:
+        return ws_url
 
     # Refuse to "launch" a remote browser — only local hosts can spawn Chrome.
     if _settings.cdp_host not in ("localhost", "127.0.0.1"):

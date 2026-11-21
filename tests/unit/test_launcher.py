@@ -769,3 +769,90 @@ async def test_get_ws_url_still_exhausts_retries_and_reports(monkeypatch):
     with pytest.raises(RuntimeError, match="did not start"):
         await _l._get_ws_url(port=19998, retries=3, delay=0.25)
     assert sessions[0].attempts == 3
+
+
+# ---------------------------------------------------------------------------
+# Re-attach: one /json/version probe, not two
+# ---------------------------------------------------------------------------
+
+
+def _version_counter(sessions: list, payload):
+    class _Resp:
+        def __init__(self, body, status=200):
+            self._payload = body
+            self.status = status
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+        async def json(self, content_type=None):
+            return self._payload
+
+    class _Session:
+        def __init__(self):
+            sessions.append(self)
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+        def get(self, _url, timeout=None):
+            self.gets = getattr(self, "gets", 0) + 1
+            return _Resp(payload)
+
+    return _Session
+
+
+async def test_attach_if_listening_uses_a_single_version_request(monkeypatch):
+    from octop_browser.cdp import launcher as _l
+
+    sessions: list = []
+    monkeypatch.setattr(
+        _l.aiohttp,
+        "ClientSession",
+        _version_counter(sessions, {"webSocketDebuggerUrl": "ws://browser"}),
+    )
+
+    assert await _l._attach_if_listening(9222) == "ws://browser"
+    assert len(sessions) == 1
+    assert sessions[0].gets == 1
+
+
+async def test_attach_if_listening_returns_none_when_nothing_listens(monkeypatch):
+    from octop_browser.cdp import launcher as _l
+
+    class _Refused:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+        def get(self, _url, timeout=None):
+            raise ConnectionRefusedError("nothing here")
+
+    monkeypatch.setattr(_l.aiohttp, "ClientSession", _Refused)
+
+    assert await _l._attach_if_listening(9222) is None
+
+
+async def test_attach_if_listening_falls_back_when_no_debugger_url(monkeypatch):
+    """A listener that answers 200 without a ws URL still errors like before."""
+    from octop_browser.cdp import launcher as _l
+
+    monkeypatch.setattr(
+        _l.aiohttp, "ClientSession", _version_counter([], {"Browser": "x"})
+    )
+
+    async def fake_sleep(_delay: float) -> None:
+        return None
+
+    monkeypatch.setattr(_l.asyncio, "sleep", fake_sleep)
+
+    with pytest.raises(RuntimeError, match="did not start"):
+        await _l._attach_if_listening(9222)
