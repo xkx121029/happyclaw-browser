@@ -11,9 +11,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from octop_browser.dom.refs import RefCache
-from octop_browser.session import BrowserSession
-from octop_browser.settings import OctopSettings
+from happyclaw_browser.dom.refs import RefCache
+from happyclaw_browser.session import BrowserSession
+from happyclaw_browser.settings import HappyclawSettings
 
 
 class _GatedClient:
@@ -37,7 +37,7 @@ class _GatedClient:
 
 def _session(client) -> BrowserSession:
     fake = SimpleNamespace(
-        client=client, ref_cache=RefCache(), _cfg=OctopSettings()
+        client=client, ref_cache=RefCache(), _cfg=HappyclawSettings()
     )
     return BrowserSession(fake, "bench")  # type: ignore[arg-type]
 
@@ -51,7 +51,9 @@ def _recording_sleep(client: _GatedClient):
 
 async def test_wait_backs_off_and_notices_a_fast_flip(monkeypatch):
     client = _GatedClient(ready_on=3)
-    monkeypatch.setattr("octop_browser.session.asyncio.sleep", _recording_sleep(client))
+    monkeypatch.setattr(
+        "happyclaw_browser.session.asyncio.sleep", _recording_sleep(client)
+    )
 
     result = await _session(client).wait(text="ready", timeout_ms=5000)
 
@@ -61,7 +63,9 @@ async def test_wait_backs_off_and_notices_a_fast_flip(monkeypatch):
 
 async def test_wait_reports_a_timeout_when_the_condition_never_holds(monkeypatch):
     client = _GatedClient(ready_on=float("inf"))
-    monkeypatch.setattr("octop_browser.session.asyncio.sleep", _recording_sleep(client))
+    monkeypatch.setattr(
+        "happyclaw_browser.session.asyncio.sleep", _recording_sleep(client)
+    )
 
     result = await _session(client).wait(text="ready", timeout_ms=50)
 

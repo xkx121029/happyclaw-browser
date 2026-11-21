@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import asyncio
 
-from octop_browser.profile import Profile
-from octop_browser.session import _InternalCDPSession
-from octop_browser.settings import OctopSettings
+from happyclaw_browser.profile import Profile
+from happyclaw_browser.session import _InternalCDPSession
+from happyclaw_browser.settings import HappyclawSettings
 
 
 class _ConcurrencyClient:
@@ -39,7 +39,7 @@ class _ConcurrencyClient:
 
 
 def _internal(client) -> _InternalCDPSession:
-    cfg = OctopSettings(idle_timeout_minutes=0)
+    cfg = HappyclawSettings(idle_timeout_minutes=0)
     profile = Profile(name="bench", data_dir="/tmp/bench-profile", cdp_port=9222)
     internal = _InternalCDPSession(profile, cfg)
     internal._client = client  # type: ignore[assignment]

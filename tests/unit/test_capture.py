@@ -9,18 +9,18 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from octop_browser.actions.capture import _resolve_path
-from octop_browser.settings import OctopSettings
+from happyclaw_browser.actions.capture import _resolve_path
+from happyclaw_browser.settings import HappyclawSettings
 
 
-def _cfg(tmp_path: Path) -> OctopSettings:
-    return OctopSettings(screenshots_dir=tmp_path)
+def _cfg(tmp_path: Path) -> HappyclawSettings:
+    return HappyclawSettings(screenshots_dir=tmp_path)
 
 
 def test_default_filename_is_timestamped_png(tmp_path: Path):
     p = _resolve_path(None, _cfg(tmp_path))
     assert p.parent == tmp_path
-    assert p.name.startswith("octop-")
+    assert p.name.startswith("happyclaw-")
     assert p.suffix == ".png"
     # Created the directory if it didn't exist.
     assert tmp_path.exists()
@@ -57,9 +57,9 @@ def test_apply_viewport_sends_setdevicemetricsoverride(tmp_path: Path):
     """
     import asyncio
 
-    from octop_browser.profile import Profile
-    from octop_browser.session import _InternalCDPSession
-    from octop_browser.settings import OctopSettings
+    from happyclaw_browser.profile import Profile
+    from happyclaw_browser.session import _InternalCDPSession
+    from happyclaw_browser.settings import HappyclawSettings
 
     sent: list[tuple[str, dict]] = []
 
@@ -68,7 +68,7 @@ def test_apply_viewport_sends_setdevicemetricsoverride(tmp_path: Path):
             sent.append((method, params or {}))
             return {}
 
-    cfg = OctopSettings(viewport_width=1280, viewport_height=720)
+    cfg = HappyclawSettings(viewport_width=1280, viewport_height=720)
     profile = Profile(name="t", data_dir=tmp_path, cdp_port=9999)
     sess = _InternalCDPSession(profile, cfg)
     sess._client = _FakeClient()  # type: ignore[assignment]

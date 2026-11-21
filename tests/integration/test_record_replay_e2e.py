@@ -7,15 +7,15 @@ from pathlib import Path
 
 import pytest
 
-from octop_browser.profile import ProfileManager
-from octop_browser.record.models import PrivacySettings
-from octop_browser.record.recorder import RecordController
-from octop_browser.record.replay import ReplayRunner
-from octop_browser.record.settings import RecordReplaySettings
-from octop_browser.record.store import RecordingStore
-from octop_browser.session import BrowserSession
-from octop_browser.settings import OctopSettings
-from octop_browser.tool_interface import browser_tool
+from happyclaw_browser.profile import ProfileManager
+from happyclaw_browser.record.models import PrivacySettings
+from happyclaw_browser.record.recorder import RecordController
+from happyclaw_browser.record.replay import ReplayRunner
+from happyclaw_browser.record.settings import RecordReplaySettings
+from happyclaw_browser.record.store import RecordingStore
+from happyclaw_browser.session import BrowserSession
+from happyclaw_browser.settings import HappyclawSettings
+from happyclaw_browser.tool_interface import browser_tool
 
 DEMO_HTML = """
 <!doctype html>
@@ -39,7 +39,7 @@ async def test_record_replay_local_form_end_to_end(tmp_path: Path):
     )
     url = page.as_uri()
 
-    settings = OctopSettings(
+    settings = HappyclawSettings(
         profiles_dir=tmp_path / "profiles",
         screenshots_dir=tmp_path / "screenshots",
         cdp_port_start=19222,

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from octop_browser.playwright_download import (
+from happyclaw_browser.playwright_download import (
     DOWNLOAD_HOST_ENV,
     PLAYWRIGHT_CDN_MIRROR,
     PLAYWRIGHT_CDN_OFFICIAL,

@@ -1,6 +1,6 @@
 """The import surface of the package.
 
-Most users of octop-browser import it in an agent process that may never touch
+Most users of happyclaw-browser import it in an agent process that may never touch
 the browser in a given run, and every CLI subcommand imports it. Pulling the
 WebSocket and HTTP stacks in at import time made all of them pay for a
 transport they were not using, so the deference is pinned here.
@@ -13,7 +13,7 @@ import sys
 
 _PROBE = """
 import sys
-import octop_browser  # noqa: F401
+import happyclaw_browser  # noqa: F401
 missing = [m for m in ("aiohttp", "websockets") if m in sys.modules]
 print(",".join(missing) or "clean")
 """
@@ -27,16 +27,16 @@ def test_importing_the_package_does_not_load_a_transport():
         text=True,
     ).stdout.strip()
 
-    assert out == "clean", f"import octop_browser pulled in {out}"
+    assert out == "clean", f"import happyclaw_browser pulled in {out}"
 
 
 def test_public_api_is_still_reachable_from_the_top_level():
-    import octop_browser
+    import happyclaw_browser
 
     for name in (
         "BrowserSession",
         "browser_tool",
-        "OctopSettings",
+        "HappyclawSettings",
         "settings",
         "ToolResult",
         "ActionMetrics",
@@ -45,7 +45,7 @@ def test_public_api_is_still_reachable_from_the_top_level():
         "chromium_executable",
         "install_chromium_stream",
     ):
-        assert hasattr(octop_browser, name), name
+        assert hasattr(happyclaw_browser, name), name
 
 
 def test_launcher_still_exposes_aiohttp_for_patching():
@@ -56,6 +56,6 @@ def test_launcher_still_exposes_aiohttp_for_patching():
     """
     import aiohttp
 
-    from octop_browser.cdp import launcher
+    from happyclaw_browser.cdp import launcher
 
     assert launcher.aiohttp is aiohttp

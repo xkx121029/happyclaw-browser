@@ -6,8 +6,8 @@ requires = ["hatchling>=1.25,<1.33"]
 build-backend = "hatchling.build"
 
 [project]
-name = "octop-browser"
-version = "1.0.1"
+name = "happyclaw-browser"
+version = "1.0.2"
 description = "AI-friendly browser automation via CDP with profile-based login persistence"
 readme = "README.md"
 license = { text = "MIT" }
@@ -42,15 +42,15 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/xkx121029/octop-browser"
-Repository = "https://github.com/xkx121029/octop-browser"
-Issues = "https://github.com/xkx121029/octop-browser/issues"
+Homepage = "https://github.com/xkx121029/happyclaw-browser"
+Repository = "https://github.com/xkx121029/happyclaw-browser"
+Issues = "https://github.com/xkx121029/happyclaw-browser/issues"
 
 [project.scripts]
-octop-browser = "octop_browser.cli:main"
+happyclaw-browser = "happyclaw_browser.cli:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/octop_browser"]
+packages = ["src/happyclaw_browser"]
 
 [tool.ruff]
 line-length = 88
@@ -62,18 +62,18 @@ select = ["E", "F", "I", "N", "W"]
 "tests/**/*.py" = ["E501"]
 # Embedded JS/CSS string literals and long generated skill-doc lines that
 # cannot be wrapped without breaking the embedded code.
-"src/octop_browser/actions/interact.py" = ["E501"]
-"src/octop_browser/mcp_server.py" = ["E501"]
-"src/octop_browser/record/daemon.py" = ["E501"]
-"src/octop_browser/record/recorder.py" = ["E501"]
-"src/octop_browser/record/replay.py" = ["E501"]
-"src/octop_browser/record/skill_generator.py" = ["E501"]
-"src/octop_browser/session.py" = ["E501"]
+"src/happyclaw_browser/actions/interact.py" = ["E501"]
+"src/happyclaw_browser/mcp_server.py" = ["E501"]
+"src/happyclaw_browser/record/daemon.py" = ["E501"]
+"src/happyclaw_browser/record/recorder.py" = ["E501"]
+"src/happyclaw_browser/record/replay.py" = ["E501"]
+"src/happyclaw_browser/record/skill_generator.py" = ["E501"]
+"src/happyclaw_browser/session.py" = ["E501"]
 
 [tool.mypy]
 strict = true
 python_version = "3.11"
-files = ["src/octop_browser"]
+files = ["src/happyclaw_browser"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
@@ -84,4 +84,4 @@ markers = [
 ]
 
 [tool.coverage.run]
-source = ["octop_browser"]
+source = ["happyclaw_browser"]

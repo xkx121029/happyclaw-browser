@@ -9,9 +9,9 @@ from __future__ import annotations
 import asyncio
 from types import SimpleNamespace
 
-from octop_browser.dom.refs import RefCache
-from octop_browser.session import BrowserSession
-from octop_browser.settings import OctopSettings
+from happyclaw_browser.dom.refs import RefCache
+from happyclaw_browser.session import BrowserSession
+from happyclaw_browser.settings import HappyclawSettings
 
 _DOM = {"root": {"nodeId": 1, "nodeType": 9, "children": []}}
 
@@ -41,7 +41,7 @@ class _ConcurrencyClient:
 
 def _session(client) -> BrowserSession:
     fake = SimpleNamespace(
-        client=client, ref_cache=RefCache(), _cfg=OctopSettings()
+        client=client, ref_cache=RefCache(), _cfg=HappyclawSettings()
     )
     return BrowserSession(fake, "bench")  # type: ignore[arg-type]
 

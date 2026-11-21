@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from octop_browser.profile import ProfileManager
-from octop_browser.session import BrowserSession
+from happyclaw_browser.profile import ProfileManager
+from happyclaw_browser.session import BrowserSession
 
 
 @pytest.fixture()

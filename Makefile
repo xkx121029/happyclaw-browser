@@ -1,4 +1,4 @@
-# Makefile for octop-browser
+# Makefile for happyclaw-browser
 # Usage:
 #   make              - Show this help
 #   make all          - format + lint + typecheck + test (ship bar)
@@ -29,7 +29,7 @@ PIP    := $(if $(UV),uv pip,python3 -m pip)
 
 .PHONY: help
 help:
-	@echo "octop-browser Build System"
+	@echo "happyclaw-browser Build System"
 	@echo ""
 	@echo "Usage: make <target>"
 	@echo ""
@@ -41,7 +41,7 @@ help:
 	@echo "  publish-test     Build + upload to TestPyPI"
 	@echo ""
 	@echo "Runtime targets:"
-	@echo "  run              Run octop-browser module"
+	@echo "  run              Run happyclaw-browser module"
 	@echo "  mcp              Start MCP server"
 	@echo ""
 	@echo "Quality targets (ship bar):"
@@ -109,11 +109,11 @@ publish-test:
 
 .PHONY: run
 run:
-	$(RUN) python -m octop_browser
+	$(RUN) python -m happyclaw_browser
 
 .PHONY: mcp
 mcp:
-	$(RUN) python -m octop_browser.mcp_server
+	$(RUN) python -m happyclaw_browser.mcp_server
 
 # ─── Quality ─────────────────────────────────────────────────────────────────
 
@@ -141,7 +141,7 @@ typecheck:
 .PHONY: test
 test:
 	@echo "[test] pytest..."
-	$(RUN) pytest --cov=octop_browser --cov-report=term-missing
+	$(RUN) pytest --cov=happyclaw_browser --cov-report=term-missing
 
 # ─── Utilities ───────────────────────────────────────────────────────────────
 

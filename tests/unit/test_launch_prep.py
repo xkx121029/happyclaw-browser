@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from octop_browser.cdp.launch_prep import (
+from happyclaw_browser.cdp.launch_prep import (
     _alt_profiles_root,
     _probe_writable,
     _runtime_dir_for_uid,
@@ -18,7 +18,7 @@ from octop_browser.cdp.launch_prep import (
     ensure_xdg_runtime_dir,
     prepare_chrome_launch,
 )
-from octop_browser.profile import Profile
+from happyclaw_browser.profile import Profile
 
 linux_only = pytest.mark.skipif(
     not sys.platform.startswith("linux"), reason="Linux-only"
@@ -42,14 +42,14 @@ def test_ensure_xdg_runtime_dir_sets_env(monkeypatch: pytest.MonkeyPatch) -> Non
     path = ensure_xdg_runtime_dir(env)
     assert path is not None
     assert env["XDG_RUNTIME_DIR"] == str(path)
-    assert path.as_posix().startswith("/tmp/runtime-octop-browser-")
+    assert path.as_posix().startswith("/tmp/runtime-happyclaw-browser-")
     assert path.is_dir()
 
 
 def test_ensure_xdg_runtime_dir_noop_on_non_linux(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from octop_browser.cdp import launch_prep as prep
+    from happyclaw_browser.cdp import launch_prep as prep
 
     monkeypatch.setattr(prep.sys, "platform", "win32")
     env: dict[str, str] = {"XDG_RUNTIME_DIR": "keep-me"}
@@ -62,7 +62,7 @@ def test_ensure_profile_writable_relocates_root_home(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     # Simulate a profile under /root by patching the detector.
-    from octop_browser.cdp import launch_prep as prep
+    from happyclaw_browser.cdp import launch_prep as prep
 
     data = tmp_path / "root-home" / "default"
     data.mkdir(parents=True)
@@ -86,7 +86,7 @@ def test_prepare_chrome_launch_injects_xdg(tmp_path: Path) -> None:
     profile = Profile(name="default", data_dir=data, cdp_port=9333)
     updated, env = prepare_chrome_launch(profile)
     assert "XDG_RUNTIME_DIR" in env
-    assert env["XDG_RUNTIME_DIR"].startswith("/tmp/runtime-octop-browser-")
+    assert env["XDG_RUNTIME_DIR"].startswith("/tmp/runtime-happyclaw-browser-")
     assert updated.data_dir.exists()
     assert env["BROWSER_USE_PROFILES_DIR"] == str(updated.data_dir.parent)
 
@@ -95,7 +95,7 @@ def test_prepare_chrome_launch_injects_xdg(tmp_path: Path) -> None:
 def test_prepare_chrome_launch_env_reflects_relocate(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from octop_browser.cdp import launch_prep as prep
+    from happyclaw_browser.cdp import launch_prep as prep
 
     data = tmp_path / "root-home" / "default"
     data.mkdir(parents=True)
@@ -113,7 +113,7 @@ def test_prepare_chrome_launch_env_reflects_relocate(
 def test_probe_writable_skips_symlink_on_non_linux(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from octop_browser.cdp import launch_prep as prep
+    from happyclaw_browser.cdp import launch_prep as prep
 
     monkeypatch.setattr(prep.sys, "platform", "win32")
 
@@ -131,7 +131,7 @@ def test_ensure_profile_writable_keeps_dir_when_symlink_fails_on_windows(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """#752: Windows symlink failure must not force a profile relocate."""
-    from octop_browser.cdp import launch_prep as prep
+    from happyclaw_browser.cdp import launch_prep as prep
 
     monkeypatch.setattr(prep.sys, "platform", "win32")
     monkeypatch.setenv("BROWSER_USE_PROFILES_DIR", str(tmp_path / "configured-root"))
@@ -156,7 +156,7 @@ def test_alt_profiles_root_uses_tempdir_on_windows(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Windows must not use a literal /tmp path (drive-relative \\tmp\\...)."""
-    from octop_browser.cdp import launch_prep as prep
+    from happyclaw_browser.cdp import launch_prep as prep
 
     fake_tmp = tmp_path / "WinTemp"
     fake_tmp.mkdir()
@@ -164,14 +164,14 @@ def test_alt_profiles_root_uses_tempdir_on_windows(
     monkeypatch.setattr(prep.tempfile, "gettempdir", lambda: str(fake_tmp))
     if hasattr(prep.os, "getuid"):
         monkeypatch.setattr(prep.os, "getuid", object())
-    monkeypatch.setenv("USERNAME", "OctopUser")
+    monkeypatch.setenv("USERNAME", "HappyClawUser")
     monkeypatch.delenv("USER", raising=False)
 
     profiles = _alt_profiles_root()
     runtime = _runtime_dir_for_uid()
 
-    assert profiles == fake_tmp / "octop-browser-profiles-OctopUser"
-    assert runtime == fake_tmp / "runtime-octop-browser-OctopUser"
+    assert profiles == fake_tmp / "happyclaw-browser-profiles-HappyClawUser"
+    assert runtime == fake_tmp / "runtime-happyclaw-browser-HappyClawUser"
     assert profiles.is_absolute()
     assert runtime.is_absolute()
 
@@ -179,14 +179,14 @@ def test_alt_profiles_root_uses_tempdir_on_windows(
 def test_temp_scope_token_uses_username_when_getuid_missing(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from octop_browser.cdp import launch_prep as prep
+    from happyclaw_browser.cdp import launch_prep as prep
 
     if hasattr(prep.os, "getuid"):
         monkeypatch.setattr(prep.os, "getuid", object())
-    monkeypatch.setenv("USERNAME", "OctopUser")
+    monkeypatch.setenv("USERNAME", "HappyClawUser")
     monkeypatch.delenv("USER", raising=False)
 
-    assert _temp_scope_token() == "OctopUser"
+    assert _temp_scope_token() == "HappyClawUser"
     assert _temp_scope_token(uid=3) == "3"
 
 
@@ -194,10 +194,10 @@ def test_temp_scope_token_uses_username_when_getuid_missing(
 def test_probe_writable_still_probes_symlink_on_linux(tmp_path: Path) -> None:
     target = tmp_path / "profile"
     assert _probe_writable(target) is True
-    assert not any(target.glob(".octop-link-*"))
+    assert not any(target.glob(".happyclaw-link-*"))
 
 
 @linux_only
 def test_alt_profiles_root_stays_under_tmp_on_linux() -> None:
     root = _alt_profiles_root()
-    assert root.as_posix().startswith("/tmp/octop-browser-profiles-")
+    assert root.as_posix().startswith("/tmp/happyclaw-browser-profiles-")

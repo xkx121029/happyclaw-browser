@@ -1,7 +1,7 @@
 import pytest
 
-from octop_browser.hooks import HooksMixin
-from octop_browser.models import ActionMetrics
+from happyclaw_browser.hooks import HooksMixin
+from happyclaw_browser.models import ActionMetrics
 
 
 class FakeSession(HooksMixin):

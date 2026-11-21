@@ -1,4 +1,4 @@
-"""Measure the properties of octop-browser's hot paths that the driver owns.
+"""Measure the properties of happyclaw-browser's hot paths that the driver owns.
 
 Wall-clock timing is a poor witness on a busy or heavily-scanned host: a
 single ``import websockets`` can cost seconds here, and Windows' ~15.6 ms
@@ -32,7 +32,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from octop_browser.cdp import launcher as launcher_mod  # noqa: E402
+from happyclaw_browser.cdp import launcher as launcher_mod  # noqa: E402
 
 #: Simulated CDP round-trip time for the fakes below.
 RTT_SECONDS = 0.02
@@ -152,7 +152,7 @@ async def bench_launch_poll_schedule() -> list[dict[str, Any]]:
 
 
 async def bench_attach_probe_count() -> list[dict[str, Any]]:
-    from octop_browser.profile import Profile
+    from happyclaw_browser.profile import Profile
 
     port = await _free_port()
     server = await asyncio.start_server(_cdp_handler, "127.0.0.1", port)
@@ -177,12 +177,12 @@ async def bench_attach_probe_count() -> list[dict[str, Any]]:
 
 
 async def bench_session_connect() -> list[dict[str, Any]]:
-    from octop_browser.profile import Profile
-    from octop_browser.session import _InternalCDPSession
-    from octop_browser.settings import OctopSettings
+    from happyclaw_browser.profile import Profile
+    from happyclaw_browser.session import _InternalCDPSession
+    from happyclaw_browser.settings import HappyclawSettings
 
     client = _RoundTripClient()
-    cfg = OctopSettings(cdp_ws_url="ws://stub", idle_timeout_minutes=0)
+    cfg = HappyclawSettings(cdp_ws_url="ws://stub", idle_timeout_minutes=0)
     profile = Profile(name="bench", data_dir="/tmp/bench-profile", cdp_port=9222)
     internal = _InternalCDPSession(profile, cfg)
     internal._client = client  # type: ignore[assignment]
@@ -197,12 +197,12 @@ async def bench_session_connect() -> list[dict[str, Any]]:
 
 
 async def bench_dom_tree() -> list[dict[str, Any]]:
-    from octop_browser.dom.refs import RefCache
-    from octop_browser.session import BrowserSession
-    from octop_browser.settings import OctopSettings
+    from happyclaw_browser.dom.refs import RefCache
+    from happyclaw_browser.session import BrowserSession
+    from happyclaw_browser.settings import HappyclawSettings
 
     client = _RoundTripClient()
-    fake = SimpleNamespace(client=client, ref_cache=RefCache(), _cfg=OctopSettings())
+    fake = SimpleNamespace(client=client, ref_cache=RefCache(), _cfg=HappyclawSettings())
     await BrowserSession(fake, "bench").dom_tree()  # type: ignore[arg-type]
     return [
         {
@@ -214,9 +214,9 @@ async def bench_dom_tree() -> list[dict[str, Any]]:
 
 
 async def bench_wait_schedule() -> list[dict[str, Any]]:
-    from octop_browser.dom.refs import RefCache
-    from octop_browser.session import BrowserSession
-    from octop_browser.settings import OctopSettings
+    from happyclaw_browser.dom.refs import RefCache
+    from happyclaw_browser.session import BrowserSession
+    from happyclaw_browser.settings import HappyclawSettings
 
     intervals: list[float] = []
     real_sleep = asyncio.sleep
@@ -230,7 +230,7 @@ async def bench_wait_schedule() -> list[dict[str, Any]]:
         await real_sleep(0)
 
     fake = SimpleNamespace(
-        client=_NeverReady(), ref_cache=RefCache(), _cfg=OctopSettings()
+        client=_NeverReady(), ref_cache=RefCache(), _cfg=HappyclawSettings()
     )
     session = BrowserSession(fake, "bench")  # type: ignore[arg-type]
     asyncio.sleep = _capture  # type: ignore[assignment]
@@ -249,7 +249,7 @@ async def bench_wait_schedule() -> list[dict[str, Any]]:
 
 async def bench_close_release() -> list[dict[str, Any]]:
     """How long a caller blocked on a reply waits after close()."""
-    from octop_browser.cdp.client import CDPClient, CDPSessionError
+    from happyclaw_browser.cdp.client import CDPClient, CDPSessionError
 
     class _SilentWS:
         async def send(self, _payload):
@@ -291,7 +291,7 @@ async def bench_close_release() -> list[dict[str, Any]]:
 _PROBE = """
 import sys
 before = set(sys.modules)
-import octop_browser  # noqa: F401
+import happyclaw_browser  # noqa: F401
 loaded = set(sys.modules) - before
 third = set()
 for name in loaded:
@@ -310,7 +310,7 @@ def bench_import() -> list[dict[str, Any]]:
     return [
         {
             "name": "import_modules",
-            "detail": "modules loaded by `import octop_browser`",
+            "detail": "modules loaded by `import happyclaw_browser`",
             "value": int(out[0]),
         },
         {
@@ -324,13 +324,13 @@ def bench_import() -> list[dict[str, Any]]:
 async def bench_real_browser() -> list[dict[str, Any]]:
     import time
 
-    from octop_browser.cdp.launcher import terminate_browser
-    from octop_browser.profile import ProfileManager
-    from octop_browser.session import BrowserSession
-    from octop_browser.settings import OctopSettings
+    from happyclaw_browser.cdp.launcher import terminate_browser
+    from happyclaw_browser.profile import ProfileManager
+    from happyclaw_browser.session import BrowserSession
+    from happyclaw_browser.settings import HappyclawSettings
 
     pm = ProfileManager(base_dir=Path.home() / ".capy" / "work" / "bench-profiles")
-    cfg = OctopSettings(idle_timeout_minutes=0)
+    cfg = HappyclawSettings(idle_timeout_minutes=0)
     out: list[dict[str, Any]] = []
 
     await terminate_browser(pm.get_or_create("bench"), cdp_host=cfg.cdp_host)

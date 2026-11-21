@@ -1,19 +1,20 @@
-"""Tests for octop_browser.install (Playwright Chromium installer)."""
+"""Tests for happyclaw_browser.install (Playwright Chromium installer)."""
 
 from __future__ import annotations
 
 import sys
+import warnings
 from typing import Any
 
 import pytest
 
-from octop_browser import install as install_mod
-from octop_browser.install import (
+from happyclaw_browser import install as install_mod
+from happyclaw_browser.install import (
     chromium_executable,
     ensure_chromium,
     install_chromium_stream,
 )
-from octop_browser.playwright_download import DownloadCandidate
+from happyclaw_browser.playwright_download import DownloadCandidate
 
 # The OS-library step is Linux-only (apt/dnf/yum + os.geteuid); these tests
 # exercise it and cannot mean anything on macOS/Windows.
@@ -78,7 +79,7 @@ def test_ensure_chromium_reports_missing_playwright_when_skip(monkeypatch, capsy
     """If playwright is missing AND skip-pip is set, fail fast with a clear message."""
     monkeypatch.setattr(install_mod, "_find_playwright_chromium", lambda: None)
     monkeypatch.setattr(install_mod, "_playwright_available", lambda: False)
-    monkeypatch.setenv("OCTOP_SKIP_PLAYWRIGHT_PIP", "1")
+    monkeypatch.setenv("HAPPYCLAW_SKIP_PLAYWRIGHT_PIP", "1")
     assert ensure_chromium(quiet=False) is False
     err = capsys.readouterr().err
     assert "Playwright is not installed" in err
@@ -87,7 +88,7 @@ def test_ensure_chromium_reports_missing_playwright_when_skip(monkeypatch, capsy
 def test_ensure_chromium_pip_then_install(monkeypatch):
     """Missing playwright triggers pip install, then the playwright installer."""
     monkeypatch.setattr(install_mod, "_find_playwright_chromium", lambda: None)
-    monkeypatch.delenv("OCTOP_SKIP_PLAYWRIGHT_PIP", raising=False)
+    monkeypatch.delenv("HAPPYCLAW_SKIP_PLAYWRIGHT_PIP", raising=False)
     monkeypatch.setattr(install_mod.shutil, "which", lambda name: None)
 
     avail = {"flag": False}
@@ -123,7 +124,7 @@ def test_ensure_chromium_pip_failure_aborts(monkeypatch):
     """If pip install fails, ensure_chromium returns False without running playwright."""
     monkeypatch.setattr(install_mod, "_find_playwright_chromium", lambda: None)
     monkeypatch.setattr(install_mod, "_playwright_available", lambda: False)
-    monkeypatch.delenv("OCTOP_SKIP_PLAYWRIGHT_PIP", raising=False)
+    monkeypatch.delenv("HAPPYCLAW_SKIP_PLAYWRIGHT_PIP", raising=False)
 
     calls: list[list[str]] = []
 
@@ -213,10 +214,10 @@ def test_ensure_chromium_handles_missing_python(monkeypatch):
 def test_run_install_deps_uses_dnf_when_no_apt(monkeypatch):
     """Sync installer must not invoke playwright install-deps on RPM hosts."""
     monkeypatch.setattr(install_mod.sys, "platform", "linux")
-    monkeypatch.setattr("octop_browser.linux_deps.sys.platform", "linux")
-    monkeypatch.setattr("octop_browser.linux_deps.os.geteuid", lambda: 0)
+    monkeypatch.setattr("happyclaw_browser.linux_deps.sys.platform", "linux")
+    monkeypatch.setattr("happyclaw_browser.linux_deps.os.geteuid", lambda: 0)
     monkeypatch.setattr(
-        "octop_browser.linux_deps.shutil.which",
+        "happyclaw_browser.linux_deps.shutil.which",
         lambda name: "/usr/bin/dnf" if name == "dnf" else None,
     )
 
@@ -245,10 +246,10 @@ def test_run_install_deps_uses_dnf_when_no_apt(monkeypatch):
 def test_run_install_deps_ignores_font_failure(monkeypatch):
     """CJK fonts are best-effort; a missing font package must not fail deps."""
     monkeypatch.setattr(install_mod.sys, "platform", "linux")
-    monkeypatch.setattr("octop_browser.linux_deps.sys.platform", "linux")
-    monkeypatch.setattr("octop_browser.linux_deps.os.geteuid", lambda: 0)
+    monkeypatch.setattr("happyclaw_browser.linux_deps.sys.platform", "linux")
+    monkeypatch.setattr("happyclaw_browser.linux_deps.os.geteuid", lambda: 0)
     monkeypatch.setattr(
-        "octop_browser.linux_deps.shutil.which",
+        "happyclaw_browser.linux_deps.shutil.which",
         lambda name: "/usr/bin/dnf" if name == "dnf" else None,
     )
 
@@ -269,10 +270,10 @@ def test_run_install_deps_ignores_font_failure(monkeypatch):
 def test_run_install_deps_apt_runs_fonts_after_playwright(monkeypatch):
     """Playwright install-deps success must still try CJK fonts."""
     monkeypatch.setattr(install_mod.sys, "platform", "linux")
-    monkeypatch.setattr("octop_browser.linux_deps.sys.platform", "linux")
-    monkeypatch.setattr("octop_browser.linux_deps.os.geteuid", lambda: 0)
+    monkeypatch.setattr("happyclaw_browser.linux_deps.sys.platform", "linux")
+    monkeypatch.setattr("happyclaw_browser.linux_deps.os.geteuid", lambda: 0)
     monkeypatch.setattr(
-        "octop_browser.linux_deps.shutil.which",
+        "happyclaw_browser.linux_deps.shutil.which",
         lambda name: "/usr/bin/apt-get" if name == "apt-get" else None,
     )
 
@@ -298,7 +299,7 @@ def test_run_install_deps_apt_runs_fonts_after_playwright(monkeypatch):
 def test_verify_chromium_hint_uses_native_manager(monkeypatch):
     monkeypatch.setattr(install_mod, "chromium_executable", lambda: "/chrome")
     monkeypatch.setattr(
-        "octop_browser.linux_deps.shutil.which",
+        "happyclaw_browser.linux_deps.shutil.which",
         lambda name: "/usr/bin/dnf" if name == "dnf" else None,
     )
 
@@ -340,7 +341,7 @@ async def test_install_stream_reports_missing_playwright_when_skip(monkeypatch):
     """When skip-pip is set and playwright is missing, fail with a clear message."""
     monkeypatch.setattr(install_mod, "_find_playwright_chromium", lambda: None)
     monkeypatch.setattr(install_mod, "_playwright_available", lambda: False)
-    monkeypatch.setenv("OCTOP_SKIP_PLAYWRIGHT_PIP", "1")
+    monkeypatch.setenv("HAPPYCLAW_SKIP_PLAYWRIGHT_PIP", "1")
     events = [e async for e in install_chromium_stream()]
     assert events[0].get("error", "").startswith("Playwright is not installed")
     final = events[-1]
@@ -352,7 +353,7 @@ async def test_install_stream_reports_missing_playwright_when_skip(monkeypatch):
 async def test_install_stream_pip_then_install(monkeypatch):
     """Missing playwright -> two streamed subprocesses (pip, then playwright)."""
     monkeypatch.setattr(install_mod, "_find_playwright_chromium", lambda: None)
-    monkeypatch.delenv("OCTOP_SKIP_PLAYWRIGHT_PIP", raising=False)
+    monkeypatch.delenv("HAPPYCLAW_SKIP_PLAYWRIGHT_PIP", raising=False)
     monkeypatch.setattr(install_mod.shutil, "which", lambda name: None)
 
     avail = {"flag": False}
@@ -390,7 +391,7 @@ async def test_install_stream_pip_failure_aborts(monkeypatch):
     """If pip install fails, the stream emits a terminal failure and stops."""
     monkeypatch.setattr(install_mod, "_find_playwright_chromium", lambda: None)
     monkeypatch.setattr(install_mod, "_playwright_available", lambda: False)
-    monkeypatch.delenv("OCTOP_SKIP_PLAYWRIGHT_PIP", raising=False)
+    monkeypatch.delenv("HAPPYCLAW_SKIP_PLAYWRIGHT_PIP", raising=False)
 
     invoked: list[list[str]] = []
 
@@ -452,9 +453,9 @@ async def test_install_stream_uses_dnf_when_apt_missing(monkeypatch):
             return "/usr/bin/dnf"
         return None
 
-    monkeypatch.setattr("octop_browser.linux_deps.shutil.which", fake_which)
-    monkeypatch.setattr("octop_browser.linux_deps.sys.platform", "linux")
-    monkeypatch.setattr("octop_browser.linux_deps.os.geteuid", lambda: 0)
+    monkeypatch.setattr("happyclaw_browser.linux_deps.shutil.which", fake_which)
+    monkeypatch.setattr("happyclaw_browser.linux_deps.sys.platform", "linux")
+    monkeypatch.setattr("happyclaw_browser.linux_deps.os.geteuid", lambda: 0)
 
     invoked: list[list[str]] = []
 
@@ -484,10 +485,10 @@ async def test_install_stream_native_hint_when_deps_fail(monkeypatch):
         "verify_chromium",
         lambda: (False, "missing system library: libatk-bridge-2.0.so.0"),
     )
-    monkeypatch.setattr("octop_browser.linux_deps.sys.platform", "linux")
-    monkeypatch.setattr("octop_browser.linux_deps.os.geteuid", lambda: 0)
+    monkeypatch.setattr("happyclaw_browser.linux_deps.sys.platform", "linux")
+    monkeypatch.setattr("happyclaw_browser.linux_deps.os.geteuid", lambda: 0)
     monkeypatch.setattr(
-        "octop_browser.linux_deps.shutil.which",
+        "happyclaw_browser.linux_deps.shutil.which",
         lambda name: "/usr/bin/dnf" if name == "dnf" else None,
     )
 
@@ -634,7 +635,7 @@ async def test_stream_subprocess_disables_cli_color(monkeypatch):
 
 
 def test_cli_install_browser_already_installed(monkeypatch, capsys):
-    from octop_browser import cli as cli_mod
+    from happyclaw_browser import cli as cli_mod
 
     monkeypatch.setattr(cli_mod, "chromium_executable", lambda: "/path/to/chrome")
     rc = cli_mod.main(["install-browser"])
@@ -643,7 +644,7 @@ def test_cli_install_browser_already_installed(monkeypatch, capsys):
 
 
 def test_cli_install_browser_invokes_ensure(monkeypatch):
-    from octop_browser import cli as cli_mod
+    from happyclaw_browser import cli as cli_mod
 
     monkeypatch.setattr(cli_mod, "chromium_executable", lambda: None)
     captured = {"called": False, "quiet": None}
@@ -659,7 +660,7 @@ def test_cli_install_browser_invokes_ensure(monkeypatch):
 
 
 def test_cli_install_browser_failure_returns_one(monkeypatch):
-    from octop_browser import cli as cli_mod
+    from happyclaw_browser import cli as cli_mod
 
     monkeypatch.setattr(cli_mod, "chromium_executable", lambda: None)
     monkeypatch.setattr(cli_mod, "ensure_chromium", lambda quiet: False)
@@ -667,7 +668,7 @@ def test_cli_install_browser_failure_returns_one(monkeypatch):
 
 
 def test_cli_no_subcommand_errors(capsys):
-    from octop_browser import cli as cli_mod
+    from happyclaw_browser import cli as cli_mod
 
     with pytest.raises(SystemExit):
         cli_mod.main([])
@@ -680,7 +681,7 @@ def test_cli_no_subcommand_errors(capsys):
 
 @pytest.mark.asyncio
 async def test_mcp_install_browser_tool_returns_summary(monkeypatch):
-    from octop_browser import mcp_server
+    from happyclaw_browser import mcp_server
 
     async def fake_stream():
         yield {"log": "downloading"}
@@ -697,7 +698,7 @@ async def test_mcp_install_browser_tool_returns_summary(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_mcp_install_browser_tool_reports_failure(monkeypatch):
-    from octop_browser import mcp_server
+    from happyclaw_browser import mcp_server
 
     async def fake_stream():
         yield {"log": "boom"}
@@ -712,7 +713,7 @@ async def test_mcp_install_browser_tool_reports_failure(monkeypatch):
 
 def test_mcp_tool_listed():
     """install_browser must be advertised in the MCP tool list."""
-    from octop_browser.mcp_server import _TOOLS
+    from happyclaw_browser.mcp_server import _TOOLS
 
     names = [t.name for t in _TOOLS]
     assert "install_browser" in names
@@ -722,7 +723,7 @@ def test_mcp_tool_listed():
 
 def test_mcp_fill_and_type_accept_selector():
     """MCP schema should match CLI/browser_tool selector support."""
-    from octop_browser.mcp_server import _TOOLS
+    from happyclaw_browser.mcp_server import _TOOLS
 
     schemas = {t.name: t.inputSchema for t in _TOOLS}
     assert "selector" in schemas["browser_fill"]["properties"]
@@ -731,7 +732,7 @@ def test_mcp_fill_and_type_accept_selector():
 
 @pytest.mark.asyncio
 async def test_mcp_record_show_uses_recording_store(monkeypatch):
-    from octop_browser import mcp_server
+    from happyclaw_browser import mcp_server
 
     class FakeStore:
         def recording_summary(self, recording_id: str):
@@ -752,7 +753,7 @@ async def test_mcp_record_show_uses_recording_store(monkeypatch):
 async def test_mcp_record_list_uses_recording_store(monkeypatch):
     from types import SimpleNamespace
 
-    from octop_browser import mcp_server
+    from happyclaw_browser import mcp_server
 
     class FakeManifest(SimpleNamespace):
         def model_dump(self, mode: str = "json", by_alias: bool = True):
@@ -774,9 +775,57 @@ async def test_mcp_record_list_uses_recording_store(monkeypatch):
 def test_pip_bootstrap_pins_the_playwright_range():
     """Nothing here imports Playwright, but the installer drives its CLI and
     the launcher probes its browser layout, so the fetched version is bounded."""
-    from octop_browser.install import _PLAYWRIGHT_REQUIREMENT
+    from happyclaw_browser.install import _PLAYWRIGHT_REQUIREMENT
 
     assert _PLAYWRIGHT_REQUIREMENT.startswith("playwright>=")
     assert "<2" in _PLAYWRIGHT_REQUIREMENT
     for cmd in install_mod._pip_install_candidates():
         assert _PLAYWRIGHT_REQUIREMENT in cmd, cmd
+
+
+def _reset_env_warnings(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(install_mod, "_deprecated_env_warned", set())
+
+
+def test_env_reader_prefers_the_happyclaw_name(monkeypatch):
+    """When both names are set the current one wins, and nothing warns."""
+    _reset_env_warnings(monkeypatch)
+    monkeypatch.setenv("HAPPYCLAW_SKIP_PLAYWRIGHT_PIP", "1")
+    monkeypatch.setenv("OCTOP_SKIP_PLAYWRIGHT_PIP", "0")
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", DeprecationWarning)
+        assert install_mod._skip_pip_bootstrap() is True
+
+
+def test_env_reader_falls_back_to_the_octop_name(monkeypatch):
+    """An upgraded deployment that only sets the pre-rename name keeps working."""
+    _reset_env_warnings(monkeypatch)
+    monkeypatch.setenv("OCTOP_SKIP_PLAYWRIGHT_PIP", "1")
+    with pytest.warns(DeprecationWarning, match="HAPPYCLAW_SKIP_PLAYWRIGHT_PIP"):
+        assert install_mod._skip_pip_bootstrap() is True
+
+
+def test_env_reader_warns_once_per_legacy_name(monkeypatch):
+    _reset_env_warnings(monkeypatch)
+    monkeypatch.setenv("OCTOP_MULTI_PIP_BOOTSTRAP", "1")
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always", DeprecationWarning)
+        assert install_mod._multi_pip_bootstrap_enabled() is True
+        assert install_mod._multi_pip_bootstrap_enabled() is True
+    assert len([w for w in caught if w.category is DeprecationWarning]) == 1
+
+
+def test_env_reader_still_honours_the_harness_name(monkeypatch):
+    """The name before the octop one is the oldest link in the chain."""
+    _reset_env_warnings(monkeypatch)
+    monkeypatch.setenv("HARNESS_SKIP_PLAYWRIGHT_PIP", "1")
+    with pytest.warns(DeprecationWarning, match="HARNESS_SKIP_PLAYWRIGHT_PIP"):
+        assert install_mod._skip_pip_bootstrap() is True
+
+
+def test_env_reader_defaults_to_unset(monkeypatch):
+    _reset_env_warnings(monkeypatch)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", DeprecationWarning)
+        assert install_mod._skip_pip_bootstrap() is False
+        assert install_mod._multi_pip_bootstrap_enabled() is False

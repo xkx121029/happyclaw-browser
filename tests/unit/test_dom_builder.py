@@ -1,7 +1,7 @@
 import json
 
-from octop_browser.dom.builder import DOMBuilder
-from octop_browser.dom.refs import RefCache
+from happyclaw_browser.dom.builder import DOMBuilder
+from happyclaw_browser.dom.refs import RefCache
 
 # Minimal synthetic CDP DOM tree
 SAMPLE_DOM = {

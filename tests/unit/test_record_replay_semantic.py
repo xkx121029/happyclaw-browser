@@ -1,4 +1,4 @@
-from octop_browser.record.semantic import SemanticProcessor
+from happyclaw_browser.record.semantic import SemanticProcessor
 
 
 def test_semantic_merges_click_input_and_navigation_expectation():

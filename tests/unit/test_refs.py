@@ -1,4 +1,4 @@
-from octop_browser.dom.refs import RefCache
+from happyclaw_browser.dom.refs import RefCache
 
 
 def test_store_and_lookup():

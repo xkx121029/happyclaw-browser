@@ -3,15 +3,15 @@ from pathlib import Path
 
 import pytest
 
-from octop_browser.models import ActionMetrics, ToolResult
-from octop_browser.record.models import (
+from happyclaw_browser.models import ActionMetrics, ToolResult
+from happyclaw_browser.record.models import (
     RecordingManifest,
     SemanticStep,
     StepsDocument,
 )
-from octop_browser.record.replay import ReplayRunner
-from octop_browser.record.settings import RecordReplaySettings
-from octop_browser.record.store import RecordingStore
+from happyclaw_browser.record.replay import ReplayRunner
+from happyclaw_browser.record.settings import RecordReplaySettings
+from happyclaw_browser.record.store import RecordingStore
 
 
 def _result(
@@ -59,7 +59,9 @@ async def test_replay_runs_document_level_verification(monkeypatch, tmp_path):
         calls.append((action, kwargs))
         return _result(action, content="ok")
 
-    monkeypatch.setattr("octop_browser.record.replay.browser_tool", fake_browser_tool)
+    monkeypatch.setattr(
+        "happyclaw_browser.record.replay.browser_tool", fake_browser_tool
+    )
     store = _store_with_steps(
         tmp_path,
         "rec_verify",
@@ -113,7 +115,9 @@ async def test_replay_switches_to_recorded_target_before_targeted_actions(
             return _result(action, content=dom)
         return _result(action, content="ok")
 
-    monkeypatch.setattr("octop_browser.record.replay.browser_tool", fake_browser_tool)
+    monkeypatch.setattr(
+        "happyclaw_browser.record.replay.browser_tool", fake_browser_tool
+    )
     store = _store_with_steps(
         tmp_path,
         "rec_tabs",
@@ -173,7 +177,9 @@ async def test_replay_writes_failure_diagnostics_when_target_cannot_be_matched(
             return _result(action, content=str(path))
         return _result(action, content="ok")
 
-    monkeypatch.setattr("octop_browser.record.replay.browser_tool", fake_browser_tool)
+    monkeypatch.setattr(
+        "happyclaw_browser.record.replay.browser_tool", fake_browser_tool
+    )
     store = _store_with_steps(
         tmp_path,
         "rec_fail",
@@ -208,7 +214,9 @@ async def test_replay_rewrites_baidu_search_url_when_query_input_changes(
         calls.append((action, kwargs))
         return _result(action, content="ok")
 
-    monkeypatch.setattr("octop_browser.record.replay.browser_tool", fake_browser_tool)
+    monkeypatch.setattr(
+        "happyclaw_browser.record.replay.browser_tool", fake_browser_tool
+    )
     store = _store_with_steps(
         tmp_path,
         "rec_baidu",
@@ -262,7 +270,9 @@ async def test_replay_runs_select_step(monkeypatch, tmp_path):
             return _result(action, content=dom)
         return _result(action, content="ok")
 
-    monkeypatch.setattr("octop_browser.record.replay.browser_tool", fake_browser_tool)
+    monkeypatch.setattr(
+        "happyclaw_browser.record.replay.browser_tool", fake_browser_tool
+    )
     store = _store_with_steps(
         tmp_path,
         "rec_select",
@@ -301,7 +311,9 @@ async def test_replay_runs_set_checked_via_selector_fallback(monkeypatch, tmp_pa
             return _result(action, content=json.dumps({"elements": []}))
         return _result(action, content="ok")
 
-    monkeypatch.setattr("octop_browser.record.replay.browser_tool", fake_browser_tool)
+    monkeypatch.setattr(
+        "happyclaw_browser.record.replay.browser_tool", fake_browser_tool
+    )
     store = _store_with_steps(
         tmp_path,
         "rec_check",
@@ -341,7 +353,9 @@ async def test_replay_supports_richer_document_verification(monkeypatch, tmp_pat
             return _result(action, content="true")
         return _result(action, content="ok")
 
-    monkeypatch.setattr("octop_browser.record.replay.browser_tool", fake_browser_tool)
+    monkeypatch.setattr(
+        "happyclaw_browser.record.replay.browser_tool", fake_browser_tool
+    )
     store = _store_with_steps(
         tmp_path,
         "rec_verify_rich",
@@ -386,7 +400,9 @@ async def test_replay_forces_new_tab_for_recorded_new_tab_steps(monkeypatch, tmp
             )
         return _result(action, content="ok")
 
-    monkeypatch.setattr("octop_browser.record.replay.browser_tool", fake_browser_tool)
+    monkeypatch.setattr(
+        "happyclaw_browser.record.replay.browser_tool", fake_browser_tool
+    )
     store = _store_with_steps(
         tmp_path,
         "rec_force_new_tabs",
@@ -442,7 +458,9 @@ async def test_replay_skips_known_transient_auth_and_risk_navigation_steps(
             return _result(action, content="runtime_tab")
         return _result(action, content="ok")
 
-    monkeypatch.setattr("octop_browser.record.replay.browser_tool", fake_browser_tool)
+    monkeypatch.setattr(
+        "happyclaw_browser.record.replay.browser_tool", fake_browser_tool
+    )
     store = _store_with_steps(
         tmp_path,
         "rec_old_transient_steps",

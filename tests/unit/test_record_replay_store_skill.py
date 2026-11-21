@@ -1,11 +1,11 @@
-from octop_browser.record.models import (
+from happyclaw_browser.record.models import (
     RecordingManifest,
     SemanticStep,
     StepsDocument,
 )
-from octop_browser.record.settings import RecordReplaySettings
-from octop_browser.record.skill_generator import SkillGenerator
-from octop_browser.record.store import RecordingStore
+from happyclaw_browser.record.settings import RecordReplaySettings
+from happyclaw_browser.record.skill_generator import SkillGenerator
+from happyclaw_browser.record.store import RecordingStore
 
 
 def test_store_round_trip(tmp_path):

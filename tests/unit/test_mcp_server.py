@@ -3,7 +3,7 @@
 ``mcp_server`` is the only module that imports ``mcp``, and it registers its
 handlers with the low-level ``@app.list_tools()`` / ``@app.call_tool()``
 decorators *at import time*. Those decorators were removed in mcp 2.x, so an
-unconstrained ``mcp`` dependency makes ``python -m octop_browser.mcp_server``
+unconstrained ``mcp`` dependency makes ``python -m happyclaw_browser.mcp_server``
 fail immediately with ``AttributeError: 'Server' object has no attribute
 'list_tools'``.
 
@@ -36,12 +36,12 @@ def test_mcp_version_is_within_supported_range() -> None:
 
 def test_mcp_server_module_imports() -> None:
     """The module must import cleanly — decorators run at import time."""
-    mod = importlib.import_module("octop_browser.mcp_server")
-    assert mod.app.name == "octop-browser"
+    mod = importlib.import_module("happyclaw_browser.mcp_server")
+    assert mod.app.name == "happyclaw-browser"
 
 
 async def test_list_tools_returns_registered_tools() -> None:
-    mod = importlib.import_module("octop_browser.mcp_server")
+    mod = importlib.import_module("happyclaw_browser.mcp_server")
     tools = await mod.list_tools()
     names = {t.name for t in tools}
 
@@ -65,7 +65,7 @@ async def test_list_tools_returns_registered_tools() -> None:
 
 async def test_close_session_tool_is_exposed_with_kill_flag() -> None:
     """MCP clients must be able to release the browser, not just detach."""
-    mod = importlib.import_module("octop_browser.mcp_server")
+    mod = importlib.import_module("happyclaw_browser.mcp_server")
     tools = {t.name: t for t in await mod.list_tools()}
 
     assert "browser_close_session" in tools
@@ -77,7 +77,7 @@ async def test_close_session_tool_is_exposed_with_kill_flag() -> None:
 
 def test_action_map_targets_exist_on_tool_interface() -> None:
     """Every mapped MCP tool must resolve to a real browser_tool action."""
-    mod = importlib.import_module("octop_browser.mcp_server")
+    mod = importlib.import_module("happyclaw_browser.mcp_server")
     tool_names = {t.name for t in mod._TOOLS}
 
     for tool_name in mod._ACTION_MAP:

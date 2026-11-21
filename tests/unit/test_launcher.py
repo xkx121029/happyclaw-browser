@@ -1,4 +1,4 @@
-"""Tests for octop_browser.cdp.launcher.find_chrome auto-discovery."""
+"""Tests for happyclaw_browser.cdp.launcher.find_chrome auto-discovery."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from octop_browser.cdp.launcher import (
+from happyclaw_browser.cdp.launcher import (
     _find_playwright_chromium,
     _get_ws_url,
     _parse_pw_revision,
@@ -76,7 +76,7 @@ def test_find_playwright_chromium_returns_none_when_missing(monkeypatch, tmp_pat
 
 
 async def test_terminate_browser_uses_browser_cdp_endpoint(monkeypatch, tmp_path):
-    from octop_browser.cdp import launcher
+    from happyclaw_browser.cdp import launcher
 
     sent: list[dict[str, object]] = []
     profile = SimpleNamespace(
@@ -144,7 +144,7 @@ async def test_terminate_browser_refuses_remote_host(tmp_path):
 
 def test_playwright_exe_candidates_windows_prefers_cft(monkeypatch, tmp_path):
     """Chrome-for-Testing (chrome-win64) wins over the legacy chrome-win layout."""
-    from octop_browser.cdp.launcher import _playwright_exe_candidates
+    from happyclaw_browser.cdp.launcher import _playwright_exe_candidates
 
     monkeypatch.setattr(sys, "platform", "win32")
     candidates = _playwright_exe_candidates(tmp_path)
@@ -155,7 +155,7 @@ def test_playwright_exe_candidates_windows_prefers_cft(monkeypatch, tmp_path):
 
 def test_playwright_exe_candidates_macos_prefers_cft(monkeypatch, tmp_path):
     """macOS probes the Chrome-for-Testing bundle before legacy Chromium.app."""
-    from octop_browser.cdp.launcher import _playwright_exe_candidates
+    from happyclaw_browser.cdp.launcher import _playwright_exe_candidates
 
     monkeypatch.setattr(sys, "platform", "darwin")
     candidates = _playwright_exe_candidates(tmp_path)
@@ -181,7 +181,7 @@ def test_find_playwright_chromium_windows_cft_layout(monkeypatch, tmp_path):
 
 def test_chrome_paths_win_expands_env_roots(monkeypatch, tmp_path):
     """Windows candidates are derived from the Program Files env vars."""
-    from octop_browser.cdp.launcher import _chrome_paths_win
+    from happyclaw_browser.cdp.launcher import _chrome_paths_win
 
     monkeypatch.setenv("PROGRAMFILES", str(tmp_path / "pf"))
     monkeypatch.delenv("PROGRAMFILES(X86)", raising=False)
@@ -219,7 +219,7 @@ def test_find_playwright_chromium_falls_back_to_old_layout(monkeypatch, tmp_path
 
 def test_no_sandbox_env_override_truthy(monkeypatch):
     """``BROWSER_USE_NO_SANDBOX=1`` forces --no-sandbox unconditionally."""
-    from octop_browser.cdp.launcher import _should_disable_sandbox
+    from happyclaw_browser.cdp.launcher import _should_disable_sandbox
 
     monkeypatch.setenv("BROWSER_USE_NO_SANDBOX", "1")
     assert _should_disable_sandbox() is True
@@ -233,7 +233,7 @@ def test_no_sandbox_env_override_falsy(monkeypatch):
     """``BROWSER_USE_NO_SANDBOX=0`` force-disables auto-detect even on
     container hosts where the kernel would otherwise refuse user
     namespaces."""
-    from octop_browser.cdp.launcher import _should_disable_sandbox
+    from happyclaw_browser.cdp.launcher import _should_disable_sandbox
 
     monkeypatch.setenv("BROWSER_USE_NO_SANDBOX", "0")
     assert _should_disable_sandbox() is False
@@ -243,7 +243,7 @@ def test_no_sandbox_env_override_falsy(monkeypatch):
 
 def test_no_sandbox_off_on_macos(monkeypatch):
     """On macOS / Windows we never need --no-sandbox."""
-    from octop_browser.cdp import launcher as _l
+    from happyclaw_browser.cdp import launcher as _l
 
     monkeypatch.delenv("BROWSER_USE_NO_SANDBOX", raising=False)
     monkeypatch.setattr(_l.sys, "platform", "darwin")
@@ -254,7 +254,7 @@ def test_no_sandbox_off_on_macos(monkeypatch):
 
 def test_user_namespaces_available_returns_bool():
     """Direct probe — just verify it returns a bool without crashing."""
-    from octop_browser.cdp.launcher import _user_namespaces_available
+    from happyclaw_browser.cdp.launcher import _user_namespaces_available
 
     assert isinstance(_user_namespaces_available(), bool)
 
@@ -395,8 +395,8 @@ def test_should_disable_dev_shm_env_force_off(monkeypatch):
 
 def test_build_flags_headless_includes_gpu_and_shm_flags(monkeypatch, tmp_path):
     """End-to-end: a headless launch on Linux gets both flags by default."""
-    from octop_browser.cdp.launcher import _build_flags
-    from octop_browser.profile import Profile
+    from happyclaw_browser.cdp.launcher import _build_flags
+    from happyclaw_browser.profile import Profile
 
     monkeypatch.delenv("BROWSER_USE_DISABLE_GPU", raising=False)
     monkeypatch.delenv("BROWSER_USE_DISABLE_DEV_SHM_USAGE", raising=False)
@@ -469,7 +469,7 @@ class _FakeNoPagesThenNewSession:
 
 def _patch_targets(monkeypatch, payload):
     """Make ``aiohttp.ClientSession()`` return *payload* from ``/json``."""
-    from octop_browser.cdp import launcher as _l
+    from happyclaw_browser.cdp import launcher as _l
 
     monkeypatch.setattr(
         _l.aiohttp, "ClientSession", lambda: _FakeAiohttpSession(payload)
@@ -478,7 +478,7 @@ def _patch_targets(monkeypatch, payload):
 
 @pytest.fixture()
 def fake_profile(tmp_path):
-    from octop_browser.profile import Profile
+    from happyclaw_browser.profile import Profile
 
     pdir = tmp_path / "profile"
     pdir.mkdir()
@@ -487,7 +487,7 @@ def fake_profile(tmp_path):
 
 async def test_get_page_ws_url_prefers_sticky_target(monkeypatch, fake_profile):
     """When the profile pinned a target and that target is still alive, use it."""
-    from octop_browser.cdp.launcher import get_page_ws_url
+    from happyclaw_browser.cdp.launcher import get_page_ws_url
 
     fake_profile.save_target("STICKY")
     _patch_targets(
@@ -515,7 +515,7 @@ async def test_get_page_ws_url_prefers_sticky_target(monkeypatch, fake_profile):
 
 async def test_get_page_ws_url_clears_dead_sticky_target(monkeypatch, fake_profile):
     """If the cached id is no longer in /json, drop it and pick a live one."""
-    from octop_browser.cdp.launcher import get_page_ws_url
+    from happyclaw_browser.cdp.launcher import get_page_ws_url
 
     fake_profile.save_target("DEAD")
     _patch_targets(
@@ -544,7 +544,7 @@ async def test_get_page_ws_url_does_not_steal_non_blank_when_blank_is_sticky(
     ``navigate`` overwrite an already-open site, which is perceived as
     "opened the wrong page".
     """
-    from octop_browser.cdp.launcher import get_page_ws_url
+    from happyclaw_browser.cdp.launcher import get_page_ws_url
 
     fake_profile.save_target("BLANK")
     _patch_targets(
@@ -573,7 +573,7 @@ async def test_get_page_ws_url_does_not_steal_non_blank_when_blank_is_sticky(
 
 async def test_get_page_ws_url_skips_about_blank(monkeypatch, fake_profile):
     """Without a sticky target, prefer the first non-about:blank page."""
-    from octop_browser.cdp.launcher import get_page_ws_url
+    from happyclaw_browser.cdp.launcher import get_page_ws_url
 
     _patch_targets(
         monkeypatch,
@@ -605,7 +605,7 @@ async def test_get_page_ws_url_skips_about_blank(monkeypatch, fake_profile):
 
 async def test_get_page_ws_url_falls_back_to_blank(monkeypatch, fake_profile):
     """If every page is about:blank, pick the first one rather than failing."""
-    from octop_browser.cdp.launcher import get_page_ws_url
+    from happyclaw_browser.cdp.launcher import get_page_ws_url
 
     _patch_targets(
         monkeypatch,
@@ -629,7 +629,7 @@ async def test_get_page_ws_url_falls_back_to_blank(monkeypatch, fake_profile):
 
 
 async def test_get_page_ws_url_no_pages_raises(monkeypatch, fake_profile):
-    from octop_browser.cdp.launcher import get_page_ws_url
+    from happyclaw_browser.cdp.launcher import get_page_ws_url
 
     _patch_targets(monkeypatch, [{"type": "background_page", "id": "BG"}])
     with pytest.raises(RuntimeError, match="No open page"):
@@ -640,8 +640,8 @@ async def test_get_page_ws_url_creates_blank_when_no_page_targets(
     monkeypatch,
     fake_profile,
 ):
-    from octop_browser.cdp import launcher as _l
-    from octop_browser.cdp.launcher import get_page_ws_url
+    from happyclaw_browser.cdp import launcher as _l
+    from happyclaw_browser.cdp.launcher import get_page_ws_url
 
     fake_session = _FakeNoPagesThenNewSession()
     monkeypatch.setattr(_l.aiohttp, "ClientSession", lambda: fake_session)
@@ -659,7 +659,7 @@ async def test_get_page_ws_url_creates_blank_when_no_page_targets(
 
 async def test_get_page_ws_url_works_without_profile(monkeypatch):
     """Backwards compat: callers that don't supply a profile still get a URL."""
-    from octop_browser.cdp.launcher import get_page_ws_url
+    from happyclaw_browser.cdp.launcher import get_page_ws_url
 
     _patch_targets(
         monkeypatch,
@@ -681,7 +681,7 @@ async def test_get_page_ws_url_works_without_profile(monkeypatch):
 
 
 def test_grow_poll_delay_doubles_then_holds_at_ceiling():
-    from octop_browser.cdp.launcher import _POLL_START_DELAY, _grow_poll_delay
+    from happyclaw_browser.cdp.launcher import _POLL_START_DELAY, _grow_poll_delay
 
     assert _grow_poll_delay(_POLL_START_DELAY, 0.25) == 0.02
     assert _grow_poll_delay(0.16, 0.25) == 0.25
@@ -690,7 +690,7 @@ def test_grow_poll_delay_doubles_then_holds_at_ceiling():
 
 def test_grow_poll_delay_without_ceiling_stays_zero():
     """``BROWSER_USE_LAUNCH_DELAY=0`` must still mean "poll as fast as possible"."""
-    from octop_browser.cdp.launcher import _grow_poll_delay
+    from happyclaw_browser.cdp.launcher import _grow_poll_delay
 
     assert _grow_poll_delay(0.01, 0.0) == 0.0
 
@@ -736,7 +736,7 @@ async def test_get_ws_url_backs_off_geometrically_and_reuses_one_session(
 ):
     """A port that binds late is found on the first tight tick, not a full
     ``launch_delay`` later, and the whole wait costs one ClientSession."""
-    from octop_browser.cdp import launcher as _l
+    from happyclaw_browser.cdp import launcher as _l
 
     sessions: list = []
     monkeypatch.setattr(_l.aiohttp, "ClientSession", _session_factory(sessions, 2))
@@ -756,7 +756,7 @@ async def test_get_ws_url_backs_off_geometrically_and_reuses_one_session(
 
 async def test_get_ws_url_still_exhausts_retries_and_reports(monkeypatch):
     """Every probe refused → the RuntimeError still names the port."""
-    from octop_browser.cdp import launcher as _l
+    from happyclaw_browser.cdp import launcher as _l
 
     sessions: list = []
     monkeypatch.setattr(_l.aiohttp, "ClientSession", _session_factory(sessions, 99))
@@ -809,7 +809,7 @@ def _version_counter(sessions: list, payload):
 
 
 async def test_attach_if_listening_uses_a_single_version_request(monkeypatch):
-    from octop_browser.cdp import launcher as _l
+    from happyclaw_browser.cdp import launcher as _l
 
     sessions: list = []
     monkeypatch.setattr(
@@ -824,7 +824,7 @@ async def test_attach_if_listening_uses_a_single_version_request(monkeypatch):
 
 
 async def test_attach_if_listening_returns_none_when_nothing_listens(monkeypatch):
-    from octop_browser.cdp import launcher as _l
+    from happyclaw_browser.cdp import launcher as _l
 
     class _Refused:
         async def __aenter__(self):
@@ -843,7 +843,7 @@ async def test_attach_if_listening_returns_none_when_nothing_listens(monkeypatch
 
 async def test_attach_if_listening_falls_back_when_no_debugger_url(monkeypatch):
     """A listener that answers 200 without a ws URL still errors like before."""
-    from octop_browser.cdp import launcher as _l
+    from happyclaw_browser.cdp import launcher as _l
 
     monkeypatch.setattr(
         _l.aiohttp, "ClientSession", _version_counter([], {"Browser": "x"})
@@ -889,8 +889,8 @@ async def test_launch_or_attach_kills_chrome_when_the_probe_explodes(
 ):
     """A non-RuntimeError from the startup probe used to escape with the
     child still running and owning the profile's user-data-dir."""
-    from octop_browser.cdp import launcher as _l
-    from octop_browser.profile import Profile
+    from happyclaw_browser.cdp import launcher as _l
+    from happyclaw_browser.profile import Profile
 
     killed: list[bool] = []
     monkeypatch.setattr(_l, "_attach_if_listening", _no_listener)
@@ -910,8 +910,8 @@ async def test_launch_or_attach_kills_chrome_when_the_probe_explodes(
 
 
 async def test_launch_or_attach_keeps_a_healthy_chrome(monkeypatch, tmp_path):
-    from octop_browser.cdp import launcher as _l
-    from octop_browser.profile import Profile
+    from happyclaw_browser.cdp import launcher as _l
+    from happyclaw_browser.profile import Profile
 
     killed: list[bool] = []
     monkeypatch.setattr(_l, "_attach_if_listening", _no_listener)
@@ -924,12 +924,14 @@ async def test_launch_or_attach_keeps_a_healthy_chrome(monkeypatch, tmp_path):
     monkeypatch.setattr(_l, "_get_ws_url", ready)
 
     profile = Profile(name="t", data_dir=tmp_path / "p", cdp_port=19996)
-    assert await _l.launch_or_attach(profile, headless=True) == "ws://devtools/browser/ok"
+    assert (
+        await _l.launch_or_attach(profile, headless=True) == "ws://devtools/browser/ok"
+    )
     assert killed == []
 
 
 def test_kill_quietly_tolerates_none_and_dead_children():
-    from octop_browser.cdp.launcher import _kill_quietly
+    from happyclaw_browser.cdp.launcher import _kill_quietly
 
     _kill_quietly(None)
 
@@ -949,7 +951,7 @@ def test_kill_quietly_tolerates_none_and_dead_children():
 
 
 def test_profile_pid_round_trip(tmp_path):
-    from octop_browser.profile import Profile
+    from happyclaw_browser.profile import Profile
 
     profile = Profile(name="p", data_dir=tmp_path, cdp_port=9222)
     assert profile.load_pid() is None
@@ -962,7 +964,7 @@ def test_profile_pid_round_trip(tmp_path):
 
 
 def test_profile_load_pid_ignores_garbage(tmp_path):
-    from octop_browser.profile import Profile
+    from happyclaw_browser.profile import Profile
 
     profile = Profile(name="p", data_dir=tmp_path, cdp_port=9222)
     (tmp_path / ".octop-browser-chrome.pid").write_text("not-a-pid", encoding="utf-8")
@@ -972,8 +974,8 @@ def test_profile_load_pid_ignores_garbage(tmp_path):
 def test_kill_recorded_pid_uses_taskkill_on_windows(monkeypatch, tmp_path):
     import sys as _sys
 
-    from octop_browser.cdp import launcher as _l
-    from octop_browser.profile import Profile
+    from happyclaw_browser.cdp import launcher as _l
+    from happyclaw_browser.profile import Profile
 
     profile = Profile(name="p", data_dir=tmp_path, cdp_port=9222)
     profile.save_pid(4321)
@@ -994,8 +996,8 @@ def test_kill_recorded_pid_uses_taskkill_on_windows(monkeypatch, tmp_path):
 
 
 def test_kill_recorded_pid_is_false_without_a_recorded_pid(tmp_path):
-    from octop_browser.cdp.launcher import _kill_recorded_pid
-    from octop_browser.profile import Profile
+    from happyclaw_browser.cdp.launcher import _kill_recorded_pid
+    from happyclaw_browser.profile import Profile
 
     profile = Profile(name="p", data_dir=tmp_path, cdp_port=9222)
     assert _kill_recorded_pid(profile) is False
@@ -1004,8 +1006,8 @@ def test_kill_recorded_pid_is_false_without_a_recorded_pid(tmp_path):
 def test_kill_recorded_pid_keeps_the_pid_when_the_kill_fails(monkeypatch, tmp_path):
     import sys as _sys
 
-    from octop_browser.cdp import launcher as _l
-    from octop_browser.profile import Profile
+    from happyclaw_browser.cdp import launcher as _l
+    from happyclaw_browser.profile import Profile
 
     profile = Profile(name="p", data_dir=tmp_path, cdp_port=9222)
     profile.save_pid(4321)
@@ -1023,9 +1025,9 @@ def test_kill_recorded_pid_keeps_the_pid_when_the_kill_fails(monkeypatch, tmp_pa
 
 async def test_terminate_browser_falls_back_to_the_recorded_pid(monkeypatch, tmp_path):
     """Graceful close fails and pkill is a POSIX-only no-op → the pid is used."""
-    from octop_browser.cdp import launcher as _l
-    from octop_browser.cdp.launch_prep import pkill_chrome_profile
-    from octop_browser.profile import Profile
+    from happyclaw_browser.cdp import launcher as _l
+    from happyclaw_browser.cdp.launch_prep import pkill_chrome_profile
+    from happyclaw_browser.profile import Profile
 
     profile = Profile(name="p", data_dir=tmp_path, cdp_port=9222)
     profile.save_pid(4321)
@@ -1043,10 +1045,10 @@ async def test_terminate_browser_falls_back_to_the_recorded_pid(monkeypatch, tmp
     monkeypatch.setattr(_l, "_kill_recorded_pid", fake_pid_kill)
     monkeypatch.setattr(_l, "pkill_chrome_profile", pkill_chrome_profile, raising=False)
     monkeypatch.setattr(
-        "octop_browser.cdp.launch_prep.pkill_chrome_profile", lambda _d: False
+        "happyclaw_browser.cdp.launch_prep.pkill_chrome_profile", lambda _d: False
     )
     monkeypatch.setattr(
-        "octop_browser.cdp.launch_prep.clear_profile_locks", lambda _d: []
+        "happyclaw_browser.cdp.launch_prep.clear_profile_locks", lambda _d: []
     )
 
     class _NoWS:

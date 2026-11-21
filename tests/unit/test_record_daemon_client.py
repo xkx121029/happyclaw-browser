@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from octop_browser.record import daemon
+from happyclaw_browser.record import daemon
 
 
 async def test_send_request_reports_missing_daemon(monkeypatch, tmp_path):

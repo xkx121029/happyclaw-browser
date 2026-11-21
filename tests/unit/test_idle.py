@@ -3,9 +3,9 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
-from octop_browser.cdp.client import CDPClient, CDPSessionError
-from octop_browser.idle import BrowserIdleController, idle_controller_for
-from octop_browser.settings import OctopSettings
+from happyclaw_browser.cdp.client import CDPClient, CDPSessionError
+from happyclaw_browser.idle import BrowserIdleController, idle_controller_for
+from happyclaw_browser.settings import HappyclawSettings
 
 
 def _profile(tmp_path: Path) -> SimpleNamespace:
@@ -13,17 +13,17 @@ def _profile(tmp_path: Path) -> SimpleNamespace:
 
 
 def test_idle_controller_disabled_by_default(tmp_path):
-    assert idle_controller_for(_profile(tmp_path), OctopSettings()) is None
+    assert idle_controller_for(_profile(tmp_path), HappyclawSettings()) is None
 
 
 def test_idle_controller_disabled_for_remote_cdp(tmp_path):
-    cfg = OctopSettings(idle_timeout_minutes=30, cdp_host="browser.example")
+    cfg = HappyclawSettings(idle_timeout_minutes=30, cdp_host="browser.example")
     assert idle_controller_for(_profile(tmp_path), cfg) is None
 
 
 async def test_idle_controller_reaps_only_after_completed_inactivity(tmp_path):
     profile = _profile(tmp_path)
-    cfg = OctopSettings(idle_timeout_minutes=30)
+    cfg = HappyclawSettings(idle_timeout_minutes=30)
     key = (profile.data_dir.resolve(), cfg.cdp_host, profile.cdp_port)
     controller = BrowserIdleController(
         profile,
@@ -35,7 +35,7 @@ async def test_idle_controller_reaps_only_after_completed_inactivity(tmp_path):
 
     controller.activity_started()
     with patch(
-        "octop_browser.cdp.launcher.terminate_browser",
+        "happyclaw_browser.cdp.launcher.terminate_browser",
         new=AsyncMock(return_value=True),
     ) as terminate:
         assert await controller._check_once() is False
@@ -47,10 +47,10 @@ async def test_idle_controller_reaps_only_after_completed_inactivity(tmp_path):
 
 
 async def test_idle_reap_drops_registry_and_cancels_watchdog(tmp_path):
-    from octop_browser import tool_interface as tool_interface_mod
+    from happyclaw_browser import tool_interface as tool_interface_mod
 
     profile = _profile(tmp_path)
-    cfg = OctopSettings(idle_timeout_minutes=30)
+    cfg = HappyclawSettings(idle_timeout_minutes=30)
     key = (profile.data_dir.resolve(), cfg.cdp_host, profile.cdp_port)
     controller = BrowserIdleController(
         profile,
@@ -65,7 +65,7 @@ async def test_idle_reap_drops_registry_and_cancels_watchdog(tmp_path):
 
     try:
         with patch(
-            "octop_browser.cdp.launcher.terminate_browser",
+            "happyclaw_browser.cdp.launcher.terminate_browser",
             new=AsyncMock(return_value=True),
         ):
             assert await controller.reap_now() is True

@@ -1,4 +1,4 @@
-"""Tests for octop_browser.cli — action dispatch + output formatting."""
+"""Tests for happyclaw_browser.cli — action dispatch + output formatting."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ from typing import Any
 
 import pytest
 
-from octop_browser import cli as cli_mod
-from octop_browser.models import ActionMetrics, ToolResult
+from happyclaw_browser import cli as cli_mod
+from happyclaw_browser.models import ActionMetrics, ToolResult
 
 
 def _ok(content: Any = "ok", action: str = "test", metadata=None) -> ToolResult:
@@ -186,7 +186,9 @@ def test_top_level_help_groups_commands_and_shows_examples(capsys):
     assert "commands:" in captured.out
     assert "Run '<command> --help'" in captured.out
     assert "Examples:" in captured.out
-    assert "octop-browser navigate https://example.com --profile work" in captured.out
+    assert (
+        "happyclaw-browser navigate https://example.com --profile work" in captured.out
+    )
     assert captured.err == ""
 
 
@@ -196,7 +198,7 @@ def test_version_prints_package_name_and_version(capsys):
 
     captured = capsys.readouterr()
     assert exc_info.value.code == 0
-    assert captured.out.startswith("octop-browser ")
+    assert captured.out.startswith("happyclaw-browser ")
     assert captured.err == ""
 
 

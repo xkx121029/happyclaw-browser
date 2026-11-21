@@ -1155,8 +1155,8 @@ wheels = [
 ]
 
 [[package]]
-name = "octop-browser"
-version = "0.9.9"
+name = "happyclaw-browser"
+version = "1.0.2"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },

@@ -1,6 +1,6 @@
 import pytest
 
-from octop_browser.cdp.launcher import find_chrome
+from happyclaw_browser.cdp.launcher import find_chrome
 
 
 def pytest_collection_modifyitems(config, items):

@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from octop_browser.profile import ProfileManager
+from happyclaw_browser.profile import ProfileManager
 
 
 @pytest.fixture()

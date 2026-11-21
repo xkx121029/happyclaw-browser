@@ -6,7 +6,7 @@ import sys
 
 import pytest
 
-from octop_browser.mode import (
+from happyclaw_browser.mode import (
     has_desktop_environment,
     normalize_mode,
     resolve_headless,

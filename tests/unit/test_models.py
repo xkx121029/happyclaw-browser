@@ -1,4 +1,4 @@
-from octop_browser.models import ActionMetrics, TabInfo, ToolResult
+from happyclaw_browser.models import ActionMetrics, TabInfo, ToolResult
 
 
 def test_action_metrics_defaults():

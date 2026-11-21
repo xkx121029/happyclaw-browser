@@ -3,9 +3,9 @@ from unittest.mock import AsyncMock, patch
 
 import aiohttp
 
-from octop_browser.cdp.client import CDPSessionError
-from octop_browser.models import ActionMetrics, ToolResult
-from octop_browser.tool_interface import browser_tool
+from happyclaw_browser.cdp.client import CDPSessionError
+from happyclaw_browser.models import ActionMetrics, ToolResult
+from happyclaw_browser.tool_interface import browser_tool
 
 
 def make_tool_result(action: str = "navigate") -> ToolResult:
@@ -28,7 +28,7 @@ async def test_browser_tool_unknown_action():
 
 async def test_browser_tool_missing_required_param():
     # navigate requires url; omitting it should return error
-    with patch("octop_browser.tool_interface._get_or_create_session") as mock_get:
+    with patch("happyclaw_browser.tool_interface._get_or_create_session") as mock_get:
         mock_sess = AsyncMock()
         mock_sess.navigate = AsyncMock(side_effect=TypeError("missing url"))
         mock_get.return_value = mock_sess
@@ -37,7 +37,7 @@ async def test_browser_tool_missing_required_param():
 
 
 async def test_browser_tool_recovers_once_from_disconnected_session(monkeypatch):
-    from octop_browser import tool_interface as tool_interface_mod
+    from happyclaw_browser import tool_interface as tool_interface_mod
 
     profile = "_test_recover_disconnected_"
     tool_interface_mod._registry.pop(profile, None)
@@ -124,8 +124,8 @@ async def test_new_tab_reuses_existing_blank_tab_for_first_url(monkeypatch):
             metrics=make_tool_result("navigate").metrics,
         )
 
-    from octop_browser import session as session_mod
-    from octop_browser.session import BrowserSession
+    from happyclaw_browser import session as session_mod
+    from happyclaw_browser.session import BrowserSession
 
     monkeypatch.setattr(session_mod.nav_actions, "navigate", fake_navigate)
 
@@ -176,8 +176,8 @@ async def test_new_tab_reports_navigation_failure_when_reusing_current_blank(
             metrics=make_tool_result("navigate").metrics,
         )
 
-    from octop_browser import session as session_mod
-    from octop_browser.session import BrowserSession
+    from happyclaw_browser import session as session_mod
+    from happyclaw_browser.session import BrowserSession
 
     monkeypatch.setattr(session_mod.nav_actions, "navigate", fake_navigate)
 
@@ -266,13 +266,11 @@ async def test_new_tab_reuses_background_blank_tab_before_creating_target(
             metrics=make_tool_result("navigate").metrics,
         )
 
-    from octop_browser import session as session_mod
-    from octop_browser.session import BrowserSession
+    from happyclaw_browser import session as session_mod
+    from happyclaw_browser.session import BrowserSession
 
     monkeypatch.setattr(session_mod.nav_actions, "navigate", fake_navigate)
-    monkeypatch.setattr(
-        aiohttp, "ClientSession", lambda: FakeClientSession()
-    )
+    monkeypatch.setattr(aiohttp, "ClientSession", lambda: FakeClientSession())
 
     sess = BrowserSession(FakeInternal(), profile_name="test")  # type: ignore[arg-type]
     result = await sess.new_tab("https://example.com/next")
@@ -352,13 +350,11 @@ async def test_new_tab_creates_target_with_url_and_activates_it(monkeypatch):
             "new_tab should pass the URL directly to Target.createTarget"
         )
 
-    from octop_browser import session as session_mod
-    from octop_browser.session import BrowserSession
+    from happyclaw_browser import session as session_mod
+    from happyclaw_browser.session import BrowserSession
 
     monkeypatch.setattr(session_mod.nav_actions, "navigate", unexpected_navigate)
-    monkeypatch.setattr(
-        aiohttp, "ClientSession", lambda: FakeClientSession()
-    )
+    monkeypatch.setattr(aiohttp, "ClientSession", lambda: FakeClientSession())
 
     sess = BrowserSession(FakeInternal(), profile_name="test")  # type: ignore[arg-type]
     result = await sess.new_tab("https://example.com/new")
@@ -440,13 +436,11 @@ async def test_new_tab_creates_target_with_destination_url_to_avoid_blank_flash(
             "new tabs with a URL should not first create about:blank and then navigate"
         )
 
-    from octop_browser import session as session_mod
-    from octop_browser.session import BrowserSession
+    from happyclaw_browser import session as session_mod
+    from happyclaw_browser.session import BrowserSession
 
     monkeypatch.setattr(session_mod.nav_actions, "navigate", unexpected_navigate)
-    monkeypatch.setattr(
-        aiohttp, "ClientSession", lambda: FakeClientSession()
-    )
+    monkeypatch.setattr(aiohttp, "ClientSession", lambda: FakeClientSession())
 
     sess = BrowserSession(FakeInternal(), profile_name="test")  # type: ignore[arg-type]
     result = await sess.new_tab("https://example.com/new")
@@ -530,12 +524,10 @@ async def test_new_tab_retries_switch_when_created_target_is_not_ready(monkeypat
     async def fake_sleep(delay: float) -> None:
         sleeps.append(delay)
 
-    from octop_browser import session as session_mod
-    from octop_browser.session import BrowserSession
+    from happyclaw_browser import session as session_mod
+    from happyclaw_browser.session import BrowserSession
 
-    monkeypatch.setattr(
-        aiohttp, "ClientSession", lambda: FakeClientSession()
-    )
+    monkeypatch.setattr(aiohttp, "ClientSession", lambda: FakeClientSession())
     monkeypatch.setattr(session_mod.asyncio, "sleep", fake_sleep)
 
     sess = BrowserSession(FakeInternal(), profile_name="test")  # type: ignore[arg-type]
@@ -612,13 +604,11 @@ async def test_new_tab_reports_create_target_failure(monkeypatch):
             "new_tab should not run a second Page.navigate after Target.createTarget"
         )
 
-    from octop_browser import session as session_mod
-    from octop_browser.session import BrowserSession
+    from happyclaw_browser import session as session_mod
+    from happyclaw_browser.session import BrowserSession
 
     monkeypatch.setattr(session_mod.nav_actions, "navigate", unexpected_navigate)
-    monkeypatch.setattr(
-        aiohttp, "ClientSession", lambda: FakeClientSession()
-    )
+    monkeypatch.setattr(aiohttp, "ClientSession", lambda: FakeClientSession())
 
     sess = BrowserSession(FakeInternal(), profile_name="test")  # type: ignore[arg-type]
     result = await sess.new_tab("https://bad.invalid")
@@ -679,11 +669,9 @@ async def test_list_tabs_marks_only_sticky_target_active(monkeypatch):
             calls.append(("http.get", {"url": url}))
             return FakeResponse()
 
-    from octop_browser.session import BrowserSession
+    from happyclaw_browser.session import BrowserSession
 
-    monkeypatch.setattr(
-        aiohttp, "ClientSession", lambda: FakeClientSession()
-    )
+    monkeypatch.setattr(aiohttp, "ClientSession", lambda: FakeClientSession())
 
     sess = BrowserSession(FakeInternal(), profile_name="test")  # type: ignore[arg-type]
     result = await sess.list_tabs()
@@ -742,8 +730,8 @@ async def test_new_tab_force_new_does_not_reuse_current_blank_tab(monkeypatch):
             "force_new=True must create a target directly, not reuse and navigate blank tabs"
         )
 
-    from octop_browser import session as session_mod
-    from octop_browser.session import BrowserSession
+    from happyclaw_browser import session as session_mod
+    from happyclaw_browser.session import BrowserSession
 
     monkeypatch.setattr(session_mod.nav_actions, "navigate", unexpected_navigate)
 
@@ -759,7 +747,7 @@ async def test_new_tab_force_new_does_not_reuse_current_blank_tab(monkeypatch):
 
 
 async def test_close_session_kill_pops_registry_before_close():
-    from octop_browser import tool_interface as tool_interface_mod
+    from happyclaw_browser import tool_interface as tool_interface_mod
 
     profile = "_test_close_kill_"
     events: list[str] = []

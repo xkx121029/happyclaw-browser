@@ -4,7 +4,7 @@ import asyncio
 
 import pytest
 
-from octop_browser.actions.navigate import navigate
+from happyclaw_browser.actions.navigate import navigate
 
 
 class FakeClient:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic record/replay smoke test for octop-browser.
+"""Deterministic record/replay smoke test for happyclaw-browser.
 
 This script is intentionally local-only: it creates a tiny form page, records
 fill+submit through a real Chrome instance, generates steps/skill, then replays
@@ -16,14 +16,14 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
 
-from octop_browser.profile import ProfileManager
-from octop_browser.record.models import PrivacySettings
-from octop_browser.record.recorder import RecordController
-from octop_browser.record.replay import ReplayRunner
-from octop_browser.record.settings import RecordReplaySettings
-from octop_browser.record.store import RecordingStore
-from octop_browser.session import BrowserSession
-from octop_browser.settings import OctopSettings
+from happyclaw_browser.profile import ProfileManager
+from happyclaw_browser.record.models import PrivacySettings
+from happyclaw_browser.record.recorder import RecordController
+from happyclaw_browser.record.replay import ReplayRunner
+from happyclaw_browser.record.settings import RecordReplaySettings
+from happyclaw_browser.record.store import RecordingStore
+from happyclaw_browser.session import BrowserSession
+from happyclaw_browser.settings import HappyclawSettings
 
 DEMO_HTML = """<!doctype html>
 <meta charset=\"utf-8\">
@@ -62,7 +62,7 @@ async def run_smoke(
     page.write_text(DEMO_HTML, encoding="utf-8")
     (base / "done.html").write_text(DONE_HTML, encoding="utf-8")
 
-    settings = OctopSettings(
+    settings = HappyclawSettings(
         profiles_dir=base / "profiles",
         screenshots_dir=base / "screenshots",
         cdp_port_start=cdp_port_start,
@@ -132,7 +132,7 @@ async def run_smoke(
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Run deterministic octop-browser record/replay smoke test."
+        description="Run deterministic happyclaw-browser record/replay smoke test."
     )
     parser.add_argument("--base-dir", type=Path, default=None)
     parser.add_argument("--headed", action="store_true")

@@ -12,7 +12,7 @@ import json
 
 import pytest
 
-from octop_browser.cdp.client import CDPClient, CDPSessionError
+from happyclaw_browser.cdp.client import CDPClient, CDPSessionError
 
 
 class _FakeWS:
