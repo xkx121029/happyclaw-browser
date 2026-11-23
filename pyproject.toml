@@ -45,6 +45,7 @@ dev = [
 Homepage = "https://github.com/xkx121029/happyclaw-browser"
 Repository = "https://github.com/xkx121029/happyclaw-browser"
 Issues = "https://github.com/xkx121029/happyclaw-browser/issues"
+Changelog = "https://github.com/xkx121029/happyclaw-browser/blob/main/CHANGELOG.md"
 
 [project.scripts]
 happyclaw-browser = "happyclaw_browser.cli:main"
